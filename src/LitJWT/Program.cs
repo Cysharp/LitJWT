@@ -10,7 +10,15 @@ namespace LitJWT
     {
         static void Main(string[] args)
         {
-            Console.WriteLine("Hello World!");
+
+
+            for (int i = 0; i < 99; i++)
+            {
+                Span<char> chars = new char[1000];
+                Base64.TryToBase64UrlChars(new byte[i], chars, out var charsWritte);
+
+                Console.WriteLine(i + " is " + Base64.GetMaxBase64UrlLength(i) + ":" + charsWritte);
+            }
         }
     }
 
@@ -24,9 +32,13 @@ namespace LitJWT
         }
     }
 
+    public delegate T PayloadParser<T>(ReadOnlySpan<char> payload);
+    public delegate ReadOnlySpan<byte> PayloadWriter<T>(T payload);
 
     public class DefaultDecoder
     {
+        static byte[] dot = Encoding.UTF8.GetBytes(".");
+
         (StringSegment header, StringSegment payload, StringSegment signature) Split(string text)
         {
             StringSegment header = default;
@@ -56,12 +68,37 @@ namespace LitJWT
             return (header, payload, signature);
         }
 
-        public delegate T PayloadParser<T>(ReadOnlySpan<char> payload);
-
-
-        public void Encode<T>(IBufferWriter<byte> bufferWriter, T payload, IJwtAlgorithm algorithm)
+        public void Encode<T>(IBufferWriter<byte> bufferWriter, T payload, PayloadWriter<T> payloadWriter, IJwtAlgorithm algorithm)
         {
-            bufferWriter.Write(algorithm.HeaderBase64WithDot);
+            var payloadBytes = payloadWriter(payload);
+            
+            // Base64.TryToBase64UrlChars
+
+
+
+            // header.
+            bufferWriter.Write(algorithm.HeaderBase64UrlWithDot);
+
+            // payload.
+            bufferWriter.Write(payloadBytes);
+            bufferWriter.Write(dot);
+
+            // signature
+
+
+
+
+
+            // serialize
+
+
+            //stackalloc 
+
+            // Span<byte> size = 
+            //Base64.TryToBase64UrlChars(
+
+
+
             // write payload.
 
             // algorithm.
@@ -197,7 +234,8 @@ namespace LitJWT
     public interface IJwtAlgorithm
     {
         ReadOnlySpan<byte> Header { get; }
-        ReadOnlySpan<byte> HeaderBase64WithDot { get; }
+        ReadOnlySpan<byte> HeaderBase64UrlWithDot { get; }
+        void Sign(ReadOnlySpan<byte> source, IBufferWriter<byte> writer);
     }
 
 
@@ -214,7 +252,7 @@ namespace LitJWT
 
         ReadOnlySpan<byte> HeaderBase64WithDot => headerBase64WithDot;
 
-        ReadOnlySpan<byte> IJwtAlgorithm.HeaderBase64WithDot => throw new NotImplementedException();
+        ReadOnlySpan<byte> IJwtAlgorithm.HeaderBase64UrlWithDot => throw new NotImplementedException();
 
         public byte[] Sign(byte[] key, ReadOnlySpan<byte> source, IBufferWriter<byte> writer)
         {
@@ -232,6 +270,11 @@ namespace LitJWT
                 }
             }
 
+            throw new NotImplementedException();
+        }
+
+        public void Sign(ReadOnlySpan<byte> source, IBufferWriter<byte> writer)
+        {
             throw new NotImplementedException();
         }
     }
