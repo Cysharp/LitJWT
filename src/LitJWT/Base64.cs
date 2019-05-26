@@ -53,16 +53,31 @@ namespace LitJWT
             return array;
         }
 
-        public static int GetMaxBase64Length(int length)
+        public static int GetBase64EncodeLength(int length)
         {
+            if (length == 0) return 0;
             var v = (((length + 2) / 3) * 4);
             return v == 0 ? 4 : v;
         }
 
-        public static int GetMaxBase64UrlLength(int length)
+        public static int GetBase64UrlEncodeLength(int length)
         {
-            var v = (((length + 2) / 3) * 4);
-            return v == 0 ? 4 : v;
+            if (length == 0) return 0;
+            var mod = (length % 3);
+            return ((length / 3) * 4) + ((mod == 0) ? 0 : (mod + 1));
+        }
+
+
+        public static int GetMaxBase64DecodeLength(int length)
+        {
+            return (length / 4) * 3;
+        }
+
+        public static int GetMaxBase64UrlDecodeLength(int length)
+        {
+            if (length == 0) return 0;
+            var mod = length % 4;
+            return (length / 4) * 3 + mod;
         }
 
         public static bool TryFromBase64String(string s, Span<byte> bytes, out int bytesWritten)
@@ -94,7 +109,22 @@ namespace LitJWT
         }
 
         // TODO:TryEncodeToUtf8
-        // public static bool TryEncodeToUtf8(ReadOnlySpan<byte> bytes, Span<byte> utf8, out int bytesWritten)
+        public static bool TryEncodeBase64(ReadOnlySpan<byte> bytes, Span<byte> utf8, out int bytesWritten)
+        {
+            throw new NotImplementedException();
+        }
+
+        public static bool TryEncodeBase64Url(ReadOnlySpan<byte> bytes, Span<byte> utf8, out int bytesWritten)
+        {
+            //TODO:
+            Span<char> buffer = stackalloc char[utf8.Length];
+            TryToBase64UrlChars(bytes, buffer, out bytesWritten);
+            for (int i = 0; i < buffer.Length; i++)
+            {
+                utf8[i] = (byte)buffer[i];
+            }
+            return true;
+        }
 
         public static bool TryToBase64Chars(ReadOnlySpan<byte> bytes, Span<char> chars, out int charsWritten)
         {

@@ -70,15 +70,27 @@ namespace LitJWT.Tests
         }
 
         [Fact]
-        public void MaxLength()
+        public void EncodeLength()
         {
             for (int i = 0; i < 99; i++)
             {
                 Span<char> chars = new char[1000];
                 Base64.TryToBase64UrlChars(new byte[i], chars, out var actual);
 
-                actual.Should().BeLessOrEqualTo(Base64.GetMaxBase64UrlLength(i));
+                actual.Should().Be(Base64.GetBase64UrlEncodeLength(i), "i is " + i);
             }
         }
+
+        [Fact]
+        public void DecodeLength()
+        {
+            for (int i = 0; i < 99; i++)
+            {
+                Span<char> chars = new char[1000];
+                Base64.TryToBase64UrlChars(new byte[i], chars, out var actual);
+                i.Should().BeLessOrEqualTo(Base64.GetMaxBase64UrlDecodeLength(actual));
+            }
+        }
+
     }
 }
