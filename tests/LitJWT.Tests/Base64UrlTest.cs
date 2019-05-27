@@ -1,6 +1,7 @@
 using FluentAssertions;
 using RandomFixtureKit;
 using System;
+using System.Text;
 using Xunit;
 
 namespace LitJWT.Tests
@@ -22,8 +23,13 @@ namespace LitJWT.Tests
 
                 Base64.TryToBase64UrlChars(item, writeTo, out var written);
                 var implResult = new string(writeTo.Slice(0, written));
-
                 implResult.Should().Be(reference);
+
+                Base64.EncodeToBase64UrlString(item).Should().Be(reference);
+
+                Span<byte> writeToUtf8 = stackalloc byte[Base64.GetBase64EncodeLength(item.Length)];
+                Base64.TryToBase64UrlUtf8(item, writeToUtf8, out var bytesWritten);
+                Encoding.UTF8.GetString(writeToUtf8.Slice(0, bytesWritten)).Should().Be(reference);
             }
         }
 
@@ -39,6 +45,10 @@ namespace LitJWT.Tests
                 var implResult = writeTo.Slice(0, written);
 
                 implResult.SequenceEqual(item).Should().BeTrue("Str:[{0}] Reference:{1} Actual:{2}", referenceString, string.Join(",", item), string.Join(",", implResult.ToArray()));
+
+                Base64.TryFromBase64UrlUtf8(Encoding.UTF8.GetBytes(referenceString), writeTo, out written);
+                implResult = writeTo.Slice(0, written);
+                implResult.SequenceEqual(item).Should().BeTrue("Str:{0} Reference:{1} Actual:{2}", referenceString, string.Join(",", item), string.Join(",", implResult.ToArray()));
             }
         }
 

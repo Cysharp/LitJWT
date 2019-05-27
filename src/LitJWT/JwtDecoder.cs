@@ -163,10 +163,7 @@ namespace LitJWT
                     var signBuffer = rentBuffer.AsSpan();
                     var byteCount = Encoding.UTF8.GetBytes(headerAndPayload, signBuffer);
                     signBuffer = signBuffer.Slice(0, byteCount);
-                    Span<byte> signatureDest = stackalloc byte[algorithm.HashSize];
-                    algorithm.Sign(signBuffer, signatureDest);
-
-                    if (!signatureDest.SequenceEqual(signatureDecoded.Slice(0, bytesSritten)))
+                    if (!algorithm.Verify(signBuffer, signatureDecoded))
                     {
                         throw new Exception(); // invalid
                     }

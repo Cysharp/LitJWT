@@ -18,14 +18,14 @@ namespace ConsoleApp
                 var encoded = encoder.Encode(new { hoge = "hugahuga", hage = "nanonano" }, Encoding.UTF8.GetBytes("hogehogehogehoge"));
                 Console.WriteLine(encoded);
 
-                var decoder = new LitJWT.JwtDecoder(new LitJWT.JwtAlgorithmResolver(new LitJWT.Algorithms.HMACSHA256Algorithm(Encoding.UTF8.GetBytes("hogehogehogehoge"))));
+                var decoder = new LitJWT.JwtDecoder(new LitJWT.JwtAlgorithmResolver(new LitJWT.Algorithms.HS256Algorithm(Encoding.UTF8.GetBytes("hogehogehogehoge"))));
 
                 decoder.TryDecode<object>(encoded, x => null, out var r);
             }
 
             {
-                var encoder = new LitJWT.JwtEncoder(new LitJWT.Algorithms.HMACSHA256Algorithm(Encoding.UTF8.GetBytes("hogehogehogehoge")));
-                var result = encoder.Encode(new { hoge = "hugahuga", hage = "nanonano" }, (x, writer) => writer.Write(Utf8Json.JsonSerializer.SerializeUnsafe(x)));
+                var encoder = new LitJWT.JwtEncoder(new LitJWT.Algorithms.HS256Algorithm(Encoding.UTF8.GetBytes("hogehogehogehoge")));
+                var result = encoder.Encode(new { hoge = "hugahuga", hage = "nanonano" }, null, (x, writer) => writer.Write(Utf8Json.JsonSerializer.SerializeUnsafe(x)));
                 Console.WriteLine(result);
             }
 

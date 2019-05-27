@@ -11,7 +11,7 @@ namespace LitJWT
 
         public void Advance(int count)
         {
-            throw new NotImplementedException();
+            // do nothing
         }
 
         public Memory<byte> GetMemory(int sizeHint = 0)

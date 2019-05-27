@@ -50,7 +50,7 @@ namespace Benchmark
         public JwtEncode()
         {
             key = Encoding.UTF8.GetBytes("hogehogehogehoge");
-            litJwtEncoder = new LitJWT.JwtEncoder(new LitJWT.Algorithms.HMACSHA256Algorithm(key));
+            litJwtEncoder = new LitJWT.JwtEncoder(new LitJWT.Algorithms.HS256Algorithm(key));
             jwtEncoder = new JWT.JwtEncoder(new JWT.Algorithms.HMACSHA256Algorithm(), new JWT.Serializers.JsonNetSerializer(), new JWT.JwtBase64UrlEncoder());
 
             jwtHandler = new JwtSecurityTokenHandler()
@@ -63,7 +63,7 @@ namespace Benchmark
         [Benchmark(Baseline = true)]
         public string CysharpJWT()
         {
-            return litJwtEncoder.Encode(new { hoge = "hugahuga", hage = "nanonano" }, (x, writer) => writer.Write(Utf8Json.JsonSerializer.SerializeUnsafe(x)));
+            return litJwtEncoder.Encode(new { hoge = "hugahuga", hage = "nanonano" }, null, (x, writer) => writer.Write(Utf8Json.JsonSerializer.SerializeUnsafe(x)));
         }
 
         [Benchmark]
@@ -104,8 +104,8 @@ namespace Benchmark
         public JwtDecode()
         {
             key = Encoding.UTF8.GetBytes("hogehogehogehoge");
-            litJwtDecoder = new LitJWT.JwtDecoder(new LitJWT.JwtAlgorithmResolver(new LitJWT.Algorithms.HMACSHA256Algorithm(key)));
-            jwtDecoder = new JWT.JwtDecoder(new JWT.Serializers.JsonNetSerializer(),new JWT.JwtValidator(new JWT.Serializers.JsonNetSerializer(), new UtcDateTimeProvider()),  new JWT.JwtBase64UrlEncoder());
+            litJwtDecoder = new LitJWT.JwtDecoder(new LitJWT.JwtAlgorithmResolver(new LitJWT.Algorithms.HS256Algorithm(key)));
+            jwtDecoder = new JWT.JwtDecoder(new JWT.Serializers.JsonNetSerializer(), new JWT.JwtValidator(new JWT.Serializers.JsonNetSerializer(), new UtcDateTimeProvider()), new JWT.JwtBase64UrlEncoder());
 
             jwtHandler = new JwtSecurityTokenHandler()
             {
