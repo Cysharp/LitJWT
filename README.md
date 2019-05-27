@@ -1,5 +1,7 @@
-# LitJWT
----
+LitJWT
+===
+[![CircleCI](https://circleci.com/gh/Cysharp/LitJWT.svg?style=svg)](https://circleci.com/gh/Cysharp/LitJWT)
+
 Lightweight, Fast [JWT(JSON Web Token)](https://jwt.io/) implementation for .NET Core. This library mainly focus on performance, 5 times faster encoding/decoding and very low allocation.
 
 ![image](https://user-images.githubusercontent.com/46207/58414904-c4c31300-80b7-11e9-9bd2-12f794518494.png)
