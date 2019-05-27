@@ -7,6 +7,18 @@ namespace LitJWT
     {
         IJwtAlgorithm signAlgorithm;
 
+        [ThreadStatic]
+        static Utf8BufferWriter encodeWriter = null;
+
+        static Utf8BufferWriter GetWriter()
+        {
+            if (encodeWriter == null)
+            {
+                encodeWriter = new Utf8BufferWriter();
+            }
+            return encodeWriter;
+        }
+
         public JwtEncoder(IJwtAlgorithm signAlgorithm)
         {
             this.signAlgorithm = signAlgorithm;
@@ -19,10 +31,17 @@ namespace LitJWT
 
         public string Encode<T>(T payload, DateTimeOffset? expire, Action<T, JwtWriter> payloadWriter)
         {
-            var buffer = new Utf8BufferWriter();
-            var writer = new JwtWriter(buffer, signAlgorithm, expire);
-            payloadWriter(payload, writer);
-            return buffer.ToString();
+            var buffer = GetWriter();
+            try
+            {
+                var writer = new JwtWriter(buffer, signAlgorithm, expire);
+                payloadWriter(payload, writer);
+                return buffer.ToString();
+            }
+            finally
+            {
+                buffer.Reset();
+            }
         }
 
         public byte[] EncodeAsUtf8Bytes<T>(T payload, TimeSpan expire, Action<T, JwtWriter> payloadWriter)
@@ -32,10 +51,17 @@ namespace LitJWT
 
         public byte[] EncodeAsUtf8Bytes<T>(T payload, DateTimeOffset? expire, Action<T, JwtWriter> payloadWriter)
         {
-            var buffer = new Utf8BufferWriter();
-            var writer = new JwtWriter(buffer, signAlgorithm, expire);
-            payloadWriter(payload, writer);
-            return buffer.ToUtf8Bytes();
+            var buffer = GetWriter();
+            try
+            {
+                var writer = new JwtWriter(buffer, signAlgorithm, expire);
+                payloadWriter(payload, writer);
+                return buffer.ToUtf8Bytes();
+            }
+            finally
+            {
+                buffer.Reset();
+            }
         }
 
         public void Encode<T>(IBufferWriter<byte> bufferWriter, T payload, TimeSpan expire, Action<T, JwtWriter> payloadWriter)

@@ -4,7 +4,7 @@ using System.Text;
 
 namespace LitJWT
 {
-    internal class Utf8BufferWriter : IBufferWriter<byte>, IDisposable
+    internal class Utf8BufferWriter : IBufferWriter<byte>
     {
         int size;
         byte[] underlyingBuffer;
@@ -41,9 +41,11 @@ namespace LitJWT
             return Encoding.UTF8.GetString(underlyingBuffer, 0, size);
         }
 
-        public void Dispose()
+        public void Reset()
         {
+            size = 0;
             if (underlyingBuffer != null) ArrayPool<byte>.Shared.Return(underlyingBuffer);
+            underlyingBuffer = null;
         }
     }
 }

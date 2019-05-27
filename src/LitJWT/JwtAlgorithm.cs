@@ -8,19 +8,26 @@ using System.Text;
 
 namespace LitJWT
 {
-    public interface IJwtAlgorithmResolver
-    {
-        IJwtAlgorithm Resolve(ReadOnlySpan<byte> name);
-    }
-
-    public class JwtAlgorithmResolver : IJwtAlgorithmResolver
+    public class JwtAlgorithmResolver
     {
         ReadOnlyUtf8StringDictionary<IJwtAlgorithm> algorithms;
+        ReadOnlyUtf8StringDictionary<IJwtAlgorithm> algorithmsBase64UrlMatch;
 
         public JwtAlgorithmResolver(params IJwtAlgorithm[] algorithms)
         {
-            var pairs = algorithms.Select(x => new KeyValuePair<byte[], IJwtAlgorithm>(Encoding.UTF8.GetBytes(x.AlgName), x));
-            this.algorithms = new ReadOnlyUtf8StringDictionary<IJwtAlgorithm>(pairs);
+            {
+                var pairs = algorithms.Select(x => new KeyValuePair<byte[], IJwtAlgorithm>(Encoding.UTF8.GetBytes(x.AlgName), x));
+                this.algorithms = new ReadOnlyUtf8StringDictionary<IJwtAlgorithm>(pairs);
+            }
+            {
+                var pairs = algorithms.Select(x => new KeyValuePair<byte[], IJwtAlgorithm>(x.HeaderBase64Url.ToArray(), x));
+                this.algorithmsBase64UrlMatch = new ReadOnlyUtf8StringDictionary<IJwtAlgorithm>(pairs);
+            }
+        }
+
+        internal IJwtAlgorithm ResolveFromBase64Header(ReadOnlySpan<byte> header)
+        {
+            return algorithmsBase64UrlMatch.TryGetValue(header, out var result) ? result : null;
         }
 
         public IJwtAlgorithm Resolve(ReadOnlySpan<byte> name)
