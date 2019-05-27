@@ -119,7 +119,7 @@ namespace LitJWT.Algorithms
     {
         public override string AlgName => "HS256";
 
-        public override int HashSize => 32;
+        public override int HashSize => 256;
 
         public HS256Algorithm(byte[] key)
             : base(key)
@@ -143,7 +143,7 @@ namespace LitJWT.Algorithms
     {
         public override string AlgName => "HS384";
 
-        public override int HashSize => 48;
+        public override int HashSize => 256;
 
         public HS384Algorithm(byte[] key)
             : base(key)
@@ -167,7 +167,7 @@ namespace LitJWT.Algorithms
     {
         public override string AlgName => "HS512";
 
-        public override int HashSize => 56;
+        public override int HashSize => 256;
 
 
         public HS512Algorithm(byte[] key)
@@ -191,6 +191,8 @@ namespace LitJWT.Algorithms
     public abstract class RSAJwtAlgorithmBase : IJwtAlgorithm, IDisposable
     {
         readonly X509Certificate2 cert;
+        readonly Func<RSA> publicKeyFactory;
+        readonly Func<RSA> privateKeyFactory;
 
         [ThreadStatic] RSA publicKey;
         [ThreadStatic] RSA privateKey;
@@ -210,6 +212,13 @@ namespace LitJWT.Algorithms
             header = buffer.ToArray();
         }
 
+        public RSAJwtAlgorithmBase(Func<RSA> publicKey, Func<RSA> privateKey)
+            : this(null)
+        {
+            this.publicKeyFactory = publicKey;
+            this.privateKeyFactory = privateKey;
+        }
+
         public abstract string AlgName { get; }
 
         public abstract int HashSize { get; }
@@ -219,19 +228,33 @@ namespace LitJWT.Algorithms
 
         public void Sign(ReadOnlySpan<byte> source, Span<byte> dest)
         {
-            privateKey.TrySignData(source, dest, HashAlgorithmName, RSASignaturePadding, out _);
+            if (!GetPrivateKey().TrySignData(source, dest, HashAlgorithmName, RSASignaturePadding, out var size))
+            {
+                throw new InvalidOperationException("Failed to sign");
+            }
+            if (size != dest.Length)
+            {
+                throw new InvalidOperationException("Invalid length of sign dest, destSize:" + dest.Length + " signSize:" + size);
+            }
         }
 
         public bool Verify(ReadOnlySpan<byte> data, ReadOnlySpan<byte> signature)
         {
-            return publicKey.VerifyData(data, signature, HashAlgorithmName, RSASignaturePadding);
+            return GetPublicKey().VerifyData(data, signature, HashAlgorithmName, RSASignaturePadding);
         }
 
         RSA GetPublicKey()
         {
             if (publicKey == null)
             {
-                publicKey = cert.GetRSAPublicKey();
+                if (cert != null)
+                {
+                    publicKey = cert.GetRSAPublicKey();
+                }
+                else
+                {
+                    publicKey = publicKeyFactory();
+                }
                 generateAlgorithms.Add(publicKey);
             }
             return publicKey;
@@ -241,7 +264,14 @@ namespace LitJWT.Algorithms
         {
             if (privateKey == null)
             {
-                privateKey = cert.GetRSAPrivateKey();
+                if (cert != null)
+                {
+                    privateKey = cert.GetRSAPrivateKey();
+                }
+                else
+                {
+                    privateKey = privateKeyFactory();
+                }
                 generateAlgorithms.Add(privateKey);
             }
             return privateKey;
@@ -272,7 +302,7 @@ namespace LitJWT.Algorithms
     {
         public override string AlgName => "RS256";
 
-        public override int HashSize => 32;
+        public override int HashSize => 256;
 
         public override HashAlgorithmName HashAlgorithmName => HashAlgorithmName.SHA256;
 
@@ -281,13 +311,17 @@ namespace LitJWT.Algorithms
         public RS256Algorithm(X509Certificate2 cert) : base(cert)
         {
         }
+
+        public RS256Algorithm(Func<RSA> publicKey, Func<RSA> privateKey) : base(publicKey, privateKey)
+        {
+        }
     }
 
     public sealed class RS384Algorithm : RSAJwtAlgorithmBase
     {
         public override string AlgName => "RS384";
 
-        public override int HashSize => 48;
+        public override int HashSize => 256;
 
         public override HashAlgorithmName HashAlgorithmName => HashAlgorithmName.SHA384;
 
@@ -296,13 +330,17 @@ namespace LitJWT.Algorithms
         public RS384Algorithm(X509Certificate2 cert) : base(cert)
         {
         }
+
+        public RS384Algorithm(Func<RSA> publicKey, Func<RSA> privateKey) : base(publicKey, privateKey)
+        {
+        }
     }
 
     public sealed class RS512Algorithm : RSAJwtAlgorithmBase
     {
         public override string AlgName => "RS512";
 
-        public override int HashSize => 64;
+        public override int HashSize => 256;
 
         public override HashAlgorithmName HashAlgorithmName => HashAlgorithmName.SHA512;
 
@@ -311,13 +349,17 @@ namespace LitJWT.Algorithms
         public RS512Algorithm(X509Certificate2 cert) : base(cert)
         {
         }
+
+        public RS512Algorithm(Func<RSA> publicKey, Func<RSA> privateKey) : base(publicKey, privateKey)
+        {
+        }
     }
 
     public sealed class PS256Algorithm : RSAJwtAlgorithmBase
     {
         public override string AlgName => "PS256";
 
-        public override int HashSize => 32;
+        public override int HashSize => 256;
 
         public override HashAlgorithmName HashAlgorithmName => HashAlgorithmName.SHA256;
 
@@ -332,7 +374,7 @@ namespace LitJWT.Algorithms
     {
         public override string AlgName => "PS384";
 
-        public override int HashSize => 48;
+        public override int HashSize => 256;
 
         public override HashAlgorithmName HashAlgorithmName => HashAlgorithmName.SHA384;
 
@@ -347,7 +389,7 @@ namespace LitJWT.Algorithms
     {
         public override string AlgName => "PS512";
 
-        public override int HashSize => 64;
+        public override int HashSize => 256;
 
         public override HashAlgorithmName HashAlgorithmName => HashAlgorithmName.SHA512;
 
@@ -388,12 +430,19 @@ namespace LitJWT.Algorithms
 
         public void Sign(ReadOnlySpan<byte> source, Span<byte> dest)
         {
-            privateKey.TrySignData(source, dest, HashAlgorithmName, out _);
+            if (!GetPrivateKey().TrySignData(source, dest, HashAlgorithmName, out var size))
+            {
+                throw new InvalidOperationException("Failed to sign");
+            }
+            if (size != dest.Length)
+            {
+                throw new InvalidOperationException("Invalid length of sign dest, destSize:" + dest.Length + " signSize:" + size);
+            }
         }
 
         public bool Verify(ReadOnlySpan<byte> data, ReadOnlySpan<byte> signature)
         {
-            return publicKey.VerifyData(data, signature, HashAlgorithmName);
+            return GetPublicKey().VerifyData(data, signature, HashAlgorithmName);
         }
 
         ECDsa GetPublicKey()
@@ -441,7 +490,7 @@ namespace LitJWT.Algorithms
     {
         public override string AlgName => "ES256";
 
-        public override int HashSize => 32;
+        public override int HashSize => 256;
 
         public override HashAlgorithmName HashAlgorithmName => HashAlgorithmName.SHA256;
 
@@ -454,7 +503,7 @@ namespace LitJWT.Algorithms
     {
         public override string AlgName => "ES384";
 
-        public override int HashSize => 48;
+        public override int HashSize => 256;
 
         public override HashAlgorithmName HashAlgorithmName => HashAlgorithmName.SHA384;
 
@@ -467,7 +516,7 @@ namespace LitJWT.Algorithms
     {
         public override string AlgName => "ES512";
 
-        public override int HashSize => 64;
+        public override int HashSize => 256;
 
         public override HashAlgorithmName HashAlgorithmName => HashAlgorithmName.SHA512;
 

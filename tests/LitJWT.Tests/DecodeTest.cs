@@ -250,5 +250,29 @@ namespace LitJWT.Tests
                 decodeResult.Should().Be(DecodeResult.Success);
             }
         }
+
+        [Fact]
+        public void PayloadJson()
+        {
+
+            var key = LitJWT.Algorithms.HS256Algorithm.GenerateRandomRecommendedKey();
+            var encoder = new JwtEncoder(new LitJWT.Algorithms.HS256Algorithm(key));
+            var decoder = new JwtDecoder(new LitJWT.Algorithms.HS256Algorithm(key));
+
+            foreach (var payload in FixtureFactory.CreateMany<Payload>(99))
+            {
+                {
+                    var result = encoder.EncodeAsUtf8Bytes(payload, null, (x, writer) => writer.Write(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(x))));
+                    var json = decoder.GetPayloadJson(result);
+                    json.Should().Be(JsonConvert.SerializeObject(payload));
+                }
+
+                {
+                    var result = encoder.Encode(payload, null, (x, writer) => writer.Write(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(x))));
+                    var json = decoder.GetPayloadJson(result);
+                    json.Should().Be(JsonConvert.SerializeObject(payload));
+                }
+            }
+        }
     }
 }

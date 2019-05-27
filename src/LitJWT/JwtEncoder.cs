@@ -10,6 +10,8 @@ namespace LitJWT
         [ThreadStatic]
         static Utf8BufferWriter encodeWriter = null;
 
+        public IJwtAlgorithm SignAlgorithm => signAlgorithm;
+
         static Utf8BufferWriter GetWriter()
         {
             if (encodeWriter == null)

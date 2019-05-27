@@ -33,7 +33,7 @@ namespace LitJWT
             this.resolver = resolver;
         }
 
-        void Split(ReadOnlySpan<char> text, out ReadOnlySpan<char> header, out ReadOnlySpan<char> payload, out ReadOnlySpan<char> headerAndPayload, out ReadOnlySpan<char> signature)
+        static void Split(ReadOnlySpan<char> text, out ReadOnlySpan<char> header, out ReadOnlySpan<char> payload, out ReadOnlySpan<char> headerAndPayload, out ReadOnlySpan<char> signature)
         {
             header = default;
             payload = default;
@@ -62,7 +62,7 @@ namespace LitJWT
             }
         }
 
-        void Split(ReadOnlySpan<byte> text, out ReadOnlySpan<byte> header, out ReadOnlySpan<byte> payload, out ReadOnlySpan<byte> headerAndPayload, out ReadOnlySpan<byte> signature)
+        static void Split(ReadOnlySpan<byte> text, out ReadOnlySpan<byte> header, out ReadOnlySpan<byte> payload, out ReadOnlySpan<byte> headerAndPayload, out ReadOnlySpan<byte> signature)
         {
             header = default;
             payload = default;
@@ -88,6 +88,49 @@ namespace LitJWT
                         break;
                     }
                 }
+            }
+        }
+
+        public string GetPayloadJson(string token)
+        {
+            return GetPayloadJson(token.AsSpan());
+        }
+
+        public string GetPayloadJson(ReadOnlySpan<char> token)
+        {
+            Split(token, out var header, out var payload, out var headerAndPayload, out var signature);
+            var rentBytes = ArrayPool<byte>.Shared.Rent(Base64.GetMaxBase64UrlDecodeLength(payload.Length));
+            try
+            {
+                Span<byte> bytes = rentBytes.AsSpan();
+                if (!Base64.TryFromBase64UrlChars(payload, bytes, out var bytesWritten))
+                {
+                    throw new InvalidOperationException("Fail to decode base64url, payload:" + new string(payload));
+                }
+                return Encoding.UTF8.GetString(bytes.Slice(0, bytesWritten));
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(rentBytes);
+            }
+        }
+
+        public string GetPayloadJson(ReadOnlySpan<byte> utf8token)
+        {
+            Split(utf8token, out var header, out var payload, out var headerAndPayload, out var signature);
+            var rentBytes = ArrayPool<byte>.Shared.Rent(Base64.GetMaxBase64UrlDecodeLength(payload.Length));
+            try
+            {
+                Span<byte> bytes = rentBytes.AsSpan();
+                if (!Base64.TryFromBase64UrlUtf8(payload, bytes, out var bytesWritten))
+                {
+                    throw new InvalidOperationException("Fail to decode base64url, payload:" + Encoding.UTF8.GetString(payload));
+                }
+                return Encoding.UTF8.GetString(bytes.Slice(0, bytesWritten));
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(rentBytes);
             }
         }
 
