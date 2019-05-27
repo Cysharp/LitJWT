@@ -119,7 +119,7 @@ namespace LitJWT.Algorithms
     {
         public override string AlgName => "HS256";
 
-        public override int HashSize => 256;
+        public override int HashSize => 32;
 
         public HS256Algorithm(byte[] key)
             : base(key)
@@ -143,7 +143,7 @@ namespace LitJWT.Algorithms
     {
         public override string AlgName => "HS384";
 
-        public override int HashSize => 256;
+        public override int HashSize => 48;
 
         public HS384Algorithm(byte[] key)
             : base(key)
@@ -167,7 +167,7 @@ namespace LitJWT.Algorithms
     {
         public override string AlgName => "HS512";
 
-        public override int HashSize => 256;
+        public override int HashSize => 64;
 
 
         public HS512Algorithm(byte[] key)

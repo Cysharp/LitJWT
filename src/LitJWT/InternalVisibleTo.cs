@@ -1,3 +1,3 @@
 ﻿using System.Runtime.CompilerServices;
 
-[assembly: InternalsVisibleTo("LitJWT.Tests")]
+//[assembly: InternalsVisibleTo("LitJWT.Tests, PublicKey=")]

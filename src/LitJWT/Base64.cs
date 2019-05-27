@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 
 namespace LitJWT
 {
-    internal static unsafe class Base64
+    public static unsafe class Base64
     {
         // char table
 
