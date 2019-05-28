@@ -5,7 +5,7 @@ namespace LitJWT.Tests
 {
     public class RandomByteArrayGenerator : RandomFixtureKit.IGenerator
     {
-        public Type Type => typeof(string);
+        public Type Type => typeof(byte[]);
 
         public object Generate(in GenerationContext context)
         {
