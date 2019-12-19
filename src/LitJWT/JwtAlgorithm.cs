@@ -55,7 +55,7 @@ namespace LitJWT.Algorithms
         readonly ThreadLocal<HashAlgorithm> hash;
         readonly ThreadLocal<ConcurrentBag<HashAlgorithm>> generateAlgorithms;
         byte[] header;
-        bool isDisposed;
+        int isDisposed;
 
         public ReadOnlySpan<byte> HeaderBase64Url => header;
 
@@ -107,7 +107,7 @@ namespace LitJWT.Algorithms
 
         protected virtual void Dispose(bool disposing)
         {
-            if (!isDisposed)
+            if (Interlocked.Increment(ref isDisposed) == 1)
             {
                 foreach (var algorithmsValue in generateAlgorithms.Values)
                 {
@@ -117,7 +117,6 @@ namespace LitJWT.Algorithms
                     }
                 }
                 generateAlgorithms.Dispose();
-                isDisposed = true;
             }
         }
 
@@ -210,7 +209,7 @@ namespace LitJWT.Algorithms
         readonly ThreadLocal<RSA> privateKey;
         readonly ThreadLocal<ConcurrentBag<AsymmetricAlgorithm>> generateAlgorithms;
 
-        bool isDisposed;
+        int isDisposed;
         byte[] header;
         public ReadOnlySpan<byte> HeaderBase64Url => header;
 
@@ -275,7 +274,7 @@ namespace LitJWT.Algorithms
         {
             return publicKey.Value.VerifyData(data, signature, HashAlgorithmName, RSASignaturePadding);
         }
-        
+
 
         public void Dispose()
         {
@@ -285,7 +284,7 @@ namespace LitJWT.Algorithms
 
         protected virtual void Dispose(bool disposing)
         {
-            if (!isDisposed)
+            if (Interlocked.Increment(ref isDisposed) == 1)
             {
                 foreach (var algorithmsValue in generateAlgorithms.Values)
                 {
@@ -296,7 +295,6 @@ namespace LitJWT.Algorithms
                 }
 
                 generateAlgorithms.Dispose();
-                isDisposed = true;
             }
         }
 
@@ -416,7 +414,7 @@ namespace LitJWT.Algorithms
         readonly ThreadLocal<ECDsa> privateKey;
         readonly ThreadLocal<ConcurrentBag<AsymmetricAlgorithm>> generateAlgorithms;
 
-        bool isDisposed;
+        int isDisposed;
         byte[] header;
         public ReadOnlySpan<byte> HeaderBase64Url => header;
 
@@ -473,7 +471,7 @@ namespace LitJWT.Algorithms
         {
             return publicKey.Value.VerifyData(data, signature, HashAlgorithmName);
         }
-        
+
 
         public void Dispose()
         {
@@ -483,7 +481,7 @@ namespace LitJWT.Algorithms
 
         protected virtual void Dispose(bool disposing)
         {
-            if (!isDisposed)
+            if (Interlocked.Increment(ref isDisposed) == 1)
             {
                 foreach (var algorithmsValue in generateAlgorithms.Values)
                 {
@@ -494,7 +492,6 @@ namespace LitJWT.Algorithms
                 }
 
                 generateAlgorithms.Dispose();
-                isDisposed = true;
             }
         }
 
