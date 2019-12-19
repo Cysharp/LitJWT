@@ -57,6 +57,7 @@ namespace LitJWT.Algorithms
         int isDisposed;
 
         public ReadOnlySpan<byte> HeaderBase64Url => header;
+        ConcurrentBag<HashAlgorithm> generatedAlgorithms = new ConcurrentBag<HashAlgorithm>();
 
         protected SymmetricJwtAlgorithmBase(byte[] key)
         {
@@ -72,8 +73,9 @@ namespace LitJWT.Algorithms
             hash = new ThreadLocal<HashAlgorithm>(() =>
             {
                 var newHash = CreateHashAlgorithm(key);
+                generatedAlgorithms.Add(newHash);
                 return newHash;
-            }, true);
+            }, false);
         }
 
         protected abstract HashAlgorithm CreateHashAlgorithm(byte[] key);
@@ -103,7 +105,7 @@ namespace LitJWT.Algorithms
         {
             if (Interlocked.Increment(ref isDisposed) == 1)
             {
-                foreach (var item in hash.Values)
+                foreach (var item in generatedAlgorithms)
                 {
                     item.Dispose();
                 }
@@ -198,6 +200,7 @@ namespace LitJWT.Algorithms
 
         readonly ThreadLocal<RSA> publicKey;
         readonly ThreadLocal<RSA> privateKey;
+        readonly ConcurrentBag<RSA> generatedAlgorithms = new ConcurrentBag<RSA>();
 
         int isDisposed;
         byte[] header;
@@ -217,15 +220,17 @@ namespace LitJWT.Algorithms
             publicKey = new ThreadLocal<RSA>(() =>
             {
                 var key = cert?.GetRSAPublicKey() ?? publicKeyFactory();
+                generatedAlgorithms.Add(key);
                 return key;
-            }, true);
+            }, false);
 
             // Create a local version of the private key instance for thread safety.
             privateKey = new ThreadLocal<RSA>(() =>
             {
                 var key = cert?.GetRSAPrivateKey() ?? privateKeyFactory();
+                generatedAlgorithms.Add(key);
                 return key;
-            }, true);
+            }, false);
         }
 
         public RSAJwtAlgorithmBase(Func<RSA> publicKey, Func<RSA> privateKey)
@@ -270,15 +275,10 @@ namespace LitJWT.Algorithms
         {
             if (Interlocked.Increment(ref isDisposed) == 1)
             {
-                foreach (var algorithmsValue in publicKey.Values)
+                foreach (var algorithmsValue in generatedAlgorithms)
                 {
                     algorithmsValue.Dispose();
                 }
-                foreach (var algorithmsValue in privateKey.Values)
-                {
-                    algorithmsValue.Dispose();
-                }
-
                 publicKey.Dispose();
                 privateKey.Dispose();
             }
@@ -398,7 +398,7 @@ namespace LitJWT.Algorithms
 
         readonly ThreadLocal<ECDsa> publicKey;
         readonly ThreadLocal<ECDsa> privateKey;
-
+        readonly ConcurrentBag<ECDsa> generatedAlgorithms = new ConcurrentBag<ECDsa>();
         int isDisposed;
         byte[] header;
         public ReadOnlySpan<byte> HeaderBase64Url => header;
@@ -417,15 +417,17 @@ namespace LitJWT.Algorithms
             publicKey = new ThreadLocal<ECDsa>(() =>
             {
                 var key = cert.GetECDsaPublicKey();
+                generatedAlgorithms.Add(key);
                 return key;
-            }, true);
+            }, false);
 
             // Create a local version of the private key instance for thread safety.
             privateKey = new ThreadLocal<ECDsa>(() =>
             {
                 var key = cert.GetECDsaPrivateKey();
+                generatedAlgorithms.Add(key);
                 return key;
-            }, true);
+            }, false);
         }
 
         public abstract string AlgName { get; }
@@ -462,15 +464,10 @@ namespace LitJWT.Algorithms
         {
             if (Interlocked.Increment(ref isDisposed) == 1)
             {
-                foreach (var algorithmsValue in publicKey.Values)
+                foreach (var algorithmsValue in generatedAlgorithms)
                 {
                     algorithmsValue.Dispose();
                 }
-                foreach (var algorithmsValue in privateKey.Values)
-                {
-                    algorithmsValue.Dispose();
-                }
-
                 publicKey.Dispose();
                 privateKey.Dispose();
             }
