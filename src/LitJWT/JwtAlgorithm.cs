@@ -5,6 +5,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using System.Threading;
 
 namespace LitJWT
 {
@@ -51,9 +52,8 @@ namespace LitJWT.Algorithms
     public abstract class SymmetricJwtAlgorithmBase : IJwtAlgorithm, IDisposable
     {
         readonly byte[] key;
-
-        [ThreadStatic] HashAlgorithm hash;
-        ConcurrentBag<HashAlgorithm> generateAlgorithms = new ConcurrentBag<HashAlgorithm>();
+        readonly ThreadLocal<HashAlgorithm> hash;
+        readonly ThreadLocal<ConcurrentBag<HashAlgorithm>> generateAlgorithms;
         byte[] header;
 
         public ReadOnlySpan<byte> HeaderBase64Url => header;
@@ -67,6 +67,18 @@ namespace LitJWT.Algorithms
             Span<byte> buffer = stackalloc byte[len];
             Base64.TryToBase64UrlUtf8(alg, buffer, out _);
             header = buffer.ToArray();
+
+            // Create a local thread version of the algorithm instance list for disposal.
+            generateAlgorithms = new ThreadLocal<ConcurrentBag<HashAlgorithm>>(
+                () => new ConcurrentBag<HashAlgorithm>(), true);
+
+            // Create a local thread version of the hash algorithm instance for thread safety.
+            hash = new ThreadLocal<HashAlgorithm>(() =>
+            {
+                var newHash = CreateHashAlgorithm(key);
+                generateAlgorithms.Value.Add(newHash);
+                return newHash;
+            }, true);
         }
 
         protected abstract HashAlgorithm CreateHashAlgorithm(byte[] key);
@@ -76,25 +88,16 @@ namespace LitJWT.Algorithms
 
         public void Sign(ReadOnlySpan<byte> source, Span<byte> dest)
         {
-            GetHash().TryComputeHash(source, dest, out _);
+            hash.Value.TryComputeHash(source, dest, out _);
         }
 
         public bool Verify(ReadOnlySpan<byte> data, ReadOnlySpan<byte> signature)
         {
             Span<byte> buffer = stackalloc byte[HashSize];
-            GetHash().TryComputeHash(data, buffer, out _);
+            hash.Value.TryComputeHash(data, buffer, out _);
             return buffer.SequenceEqual(signature);
         }
 
-        HashAlgorithm GetHash()
-        {
-            if (hash == null)
-            {
-                hash = CreateHashAlgorithm(key);
-                generateAlgorithms.Add(hash);
-            }
-            return hash;
-        }
         public void Dispose()
         {
             Dispose(true);
@@ -103,10 +106,14 @@ namespace LitJWT.Algorithms
 
         protected virtual void Dispose(bool disposing)
         {
-            foreach (var item in generateAlgorithms)
+            foreach (var algorithmsValue in generateAlgorithms.Values)
             {
-                item.Dispose();
+                foreach (var item in algorithmsValue)
+                {
+                    item.Dispose();
+                }
             }
+            generateAlgorithms.Dispose();
         }
 
         ~SymmetricJwtAlgorithmBase()
@@ -194,9 +201,9 @@ namespace LitJWT.Algorithms
         readonly Func<RSA> publicKeyFactory;
         readonly Func<RSA> privateKeyFactory;
 
-        [ThreadStatic] RSA publicKey;
-        [ThreadStatic] RSA privateKey;
-        ConcurrentBag<AsymmetricAlgorithm> generateAlgorithms = new ConcurrentBag<AsymmetricAlgorithm>();
+        readonly ThreadLocal<RSA> publicKey;
+        readonly ThreadLocal<RSA> privateKey;
+        readonly ThreadLocal<ConcurrentBag<AsymmetricAlgorithm>> generateAlgorithms;
 
         byte[] header;
         public ReadOnlySpan<byte> HeaderBase64Url => header;
@@ -210,6 +217,26 @@ namespace LitJWT.Algorithms
             Span<byte> buffer = stackalloc byte[len];
             Base64.TryToBase64UrlUtf8(alg, buffer, out _);
             header = buffer.ToArray();
+
+            // Create a local version of the algorithm list for disposal.
+            generateAlgorithms = new ThreadLocal<ConcurrentBag<AsymmetricAlgorithm>>(
+                () => new ConcurrentBag<AsymmetricAlgorithm>(), true);
+
+            // Create a local version of the public key instance for thread safety.
+            publicKey = new ThreadLocal<RSA>(() =>
+            {
+                var key = cert?.GetRSAPublicKey() ?? publicKeyFactory();
+                generateAlgorithms.Value.Add(key);
+                return key;
+            }, true);
+
+            // Create a local version of the private key instance for thread safety.
+            privateKey = new ThreadLocal<RSA>(() =>
+            {
+                var key = cert?.GetRSAPrivateKey() ?? privateKeyFactory();
+                generateAlgorithms.Value.Add(key);
+                return key;
+            }, true);
         }
 
         public RSAJwtAlgorithmBase(Func<RSA> publicKey, Func<RSA> privateKey)
@@ -228,7 +255,7 @@ namespace LitJWT.Algorithms
 
         public void Sign(ReadOnlySpan<byte> source, Span<byte> dest)
         {
-            if (!GetPrivateKey().TrySignData(source, dest, HashAlgorithmName, RSASignaturePadding, out var size))
+            if (!privateKey.Value.TrySignData(source, dest, HashAlgorithmName, RSASignaturePadding, out var size))
             {
                 throw new InvalidOperationException("Failed to sign");
             }
@@ -240,43 +267,9 @@ namespace LitJWT.Algorithms
 
         public bool Verify(ReadOnlySpan<byte> data, ReadOnlySpan<byte> signature)
         {
-            return GetPublicKey().VerifyData(data, signature, HashAlgorithmName, RSASignaturePadding);
+            return publicKey.Value.VerifyData(data, signature, HashAlgorithmName, RSASignaturePadding);
         }
-
-        RSA GetPublicKey()
-        {
-            if (publicKey == null)
-            {
-                if (cert != null)
-                {
-                    publicKey = cert.GetRSAPublicKey();
-                }
-                else
-                {
-                    publicKey = publicKeyFactory();
-                }
-                generateAlgorithms.Add(publicKey);
-            }
-            return publicKey;
-        }
-
-        RSA GetPrivateKey()
-        {
-            if (privateKey == null)
-            {
-                if (cert != null)
-                {
-                    privateKey = cert.GetRSAPrivateKey();
-                }
-                else
-                {
-                    privateKey = privateKeyFactory();
-                }
-                generateAlgorithms.Add(privateKey);
-            }
-            return privateKey;
-        }
-
+        
 
         public void Dispose()
         {
@@ -286,10 +279,15 @@ namespace LitJWT.Algorithms
 
         protected virtual void Dispose(bool disposing)
         {
-            foreach (var item in generateAlgorithms)
+            foreach (var algorithmsValue in generateAlgorithms.Values)
             {
-                item.Dispose();
+                foreach (var item in algorithmsValue)
+                {
+                    item.Dispose();
+                }
             }
+
+            generateAlgorithms.Dispose();
         }
 
         ~RSAJwtAlgorithmBase()
@@ -404,9 +402,9 @@ namespace LitJWT.Algorithms
     {
         readonly X509Certificate2 cert;
 
-        [ThreadStatic] ECDsa publicKey;
-        [ThreadStatic] ECDsa privateKey;
-        ConcurrentBag<AsymmetricAlgorithm> generateAlgorithms = new ConcurrentBag<AsymmetricAlgorithm>();
+        readonly ThreadLocal<ECDsa> publicKey;
+        readonly ThreadLocal<ECDsa> privateKey;
+        readonly ThreadLocal<ConcurrentBag<AsymmetricAlgorithm>> generateAlgorithms;
 
         byte[] header;
         public ReadOnlySpan<byte> HeaderBase64Url => header;
@@ -420,6 +418,26 @@ namespace LitJWT.Algorithms
             Span<byte> buffer = stackalloc byte[len];
             Base64.TryToBase64UrlUtf8(alg, buffer, out _);
             header = buffer.ToArray();
+
+            // Create a local version of the algorithm list for disposal.
+            generateAlgorithms = new ThreadLocal<ConcurrentBag<AsymmetricAlgorithm>>(
+                () => new ConcurrentBag<AsymmetricAlgorithm>(), true);
+
+            // Create a local version of the public key instance for thread safety.
+            publicKey = new ThreadLocal<ECDsa>(() =>
+            {
+                var key = cert.GetECDsaPublicKey();
+                generateAlgorithms.Value.Add(key);
+                return key;
+            }, true);
+
+            // Create a local version of the private key instance for thread safety.
+            privateKey = new ThreadLocal<ECDsa>(() =>
+            {
+                var key = cert.GetECDsaPrivateKey();
+                generateAlgorithms.Value.Add(key);
+                return key;
+            }, true);
         }
 
         public abstract string AlgName { get; }
@@ -430,7 +448,7 @@ namespace LitJWT.Algorithms
 
         public void Sign(ReadOnlySpan<byte> source, Span<byte> dest)
         {
-            if (!GetPrivateKey().TrySignData(source, dest, HashAlgorithmName, out var size))
+            if (!privateKey.Value.TrySignData(source, dest, HashAlgorithmName, out var size))
             {
                 throw new InvalidOperationException("Failed to sign");
             }
@@ -442,29 +460,9 @@ namespace LitJWT.Algorithms
 
         public bool Verify(ReadOnlySpan<byte> data, ReadOnlySpan<byte> signature)
         {
-            return GetPublicKey().VerifyData(data, signature, HashAlgorithmName);
+            return publicKey.Value.VerifyData(data, signature, HashAlgorithmName);
         }
-
-        ECDsa GetPublicKey()
-        {
-            if (publicKey == null)
-            {
-                publicKey = cert.GetECDsaPublicKey();
-                generateAlgorithms.Add(publicKey);
-            }
-            return publicKey;
-        }
-
-        ECDsa GetPrivateKey()
-        {
-            if (privateKey == null)
-            {
-                privateKey = cert.GetECDsaPrivateKey();
-                generateAlgorithms.Add(privateKey);
-            }
-            return privateKey;
-        }
-
+        
 
         public void Dispose()
         {
@@ -474,10 +472,15 @@ namespace LitJWT.Algorithms
 
         protected virtual void Dispose(bool disposing)
         {
-            foreach (var item in generateAlgorithms)
+            foreach (var algorithmsValue in generateAlgorithms.Values)
             {
-                item.Dispose();
+                foreach (var item in algorithmsValue)
+                {
+                    item.Dispose();
+                }
             }
+
+            generateAlgorithms.Dispose();
         }
 
         ~ESJwtAlgorithmBase()

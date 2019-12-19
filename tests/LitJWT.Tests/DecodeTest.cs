@@ -5,6 +5,8 @@ using RandomFixtureKit;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace LitJWT.Tests
@@ -273,6 +275,32 @@ namespace LitJWT.Tests
                     json.Should().Be(JsonConvert.SerializeObject(payload));
                 }
             }
+        }
+
+        [Fact]
+        public void ThreadSafeDecode()
+        {
+            var payload = FixtureFactory.Create<Payload>();
+            var key = LitJWT.Algorithms.HS256Algorithm.GenerateRandomRecommendedKey();
+            var encoder = new JwtEncoder(new LitJWT.Algorithms.HS256Algorithm(key));
+            var decoder = new JwtDecoder(encoder.SignAlgorithm);
+
+            var result = encoder.EncodeAsUtf8Bytes(payload, null, (x, writer) => writer.Write(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(x))));
+
+            void TestFunc()
+            {
+                var decodeResult = decoder.TryDecode(result,
+                    x => JsonConvert.DeserializeObject<Payload>(Encoding.UTF8.GetString(x)), out var decodedPayload);
+                decodeResult.Should().Be(DecodeResult.Success);
+            }
+
+            var testRuns = new List<Task>();
+            for (int i = 0; i < 100; i++)
+            {
+                testRuns.Add(Task.Run(TestFunc));
+            }
+
+            Task.WaitAll(testRuns.ToArray());
         }
     }
 }
