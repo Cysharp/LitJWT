@@ -53,7 +53,6 @@ namespace LitJWT.Algorithms
     {
         readonly byte[] key;
         readonly ThreadLocal<HashAlgorithm> hash;
-        readonly ThreadLocal<ConcurrentBag<HashAlgorithm>> generateAlgorithms;
         byte[] header;
         int isDisposed;
 
@@ -69,15 +68,10 @@ namespace LitJWT.Algorithms
             Base64.TryToBase64UrlUtf8(alg, buffer, out _);
             header = buffer.ToArray();
 
-            // Create a local thread version of the algorithm instance list for disposal.
-            generateAlgorithms = new ThreadLocal<ConcurrentBag<HashAlgorithm>>(
-                () => new ConcurrentBag<HashAlgorithm>(), true);
-
             // Create a local thread version of the hash algorithm instance for thread safety.
             hash = new ThreadLocal<HashAlgorithm>(() =>
             {
                 var newHash = CreateHashAlgorithm(key);
-                generateAlgorithms.Value.Add(newHash);
                 return newHash;
             }, true);
         }
@@ -109,14 +103,11 @@ namespace LitJWT.Algorithms
         {
             if (Interlocked.Increment(ref isDisposed) == 1)
             {
-                foreach (var algorithmsValue in generateAlgorithms.Values)
+                foreach (var item in hash.Values)
                 {
-                    foreach (var item in algorithmsValue)
-                    {
-                        item.Dispose();
-                    }
+                    item.Dispose();
                 }
-                generateAlgorithms.Dispose();
+                hash.Dispose();
             }
         }
 
@@ -207,7 +198,6 @@ namespace LitJWT.Algorithms
 
         readonly ThreadLocal<RSA> publicKey;
         readonly ThreadLocal<RSA> privateKey;
-        readonly ThreadLocal<ConcurrentBag<AsymmetricAlgorithm>> generateAlgorithms;
 
         int isDisposed;
         byte[] header;
@@ -223,15 +213,10 @@ namespace LitJWT.Algorithms
             Base64.TryToBase64UrlUtf8(alg, buffer, out _);
             header = buffer.ToArray();
 
-            // Create a local version of the algorithm list for disposal.
-            generateAlgorithms = new ThreadLocal<ConcurrentBag<AsymmetricAlgorithm>>(
-                () => new ConcurrentBag<AsymmetricAlgorithm>(), true);
-
             // Create a local version of the public key instance for thread safety.
             publicKey = new ThreadLocal<RSA>(() =>
             {
                 var key = cert?.GetRSAPublicKey() ?? publicKeyFactory();
-                generateAlgorithms.Value.Add(key);
                 return key;
             }, true);
 
@@ -239,7 +224,6 @@ namespace LitJWT.Algorithms
             privateKey = new ThreadLocal<RSA>(() =>
             {
                 var key = cert?.GetRSAPrivateKey() ?? privateKeyFactory();
-                generateAlgorithms.Value.Add(key);
                 return key;
             }, true);
         }
@@ -286,15 +270,17 @@ namespace LitJWT.Algorithms
         {
             if (Interlocked.Increment(ref isDisposed) == 1)
             {
-                foreach (var algorithmsValue in generateAlgorithms.Values)
+                foreach (var algorithmsValue in publicKey.Values)
                 {
-                    foreach (var item in algorithmsValue)
-                    {
-                        item.Dispose();
-                    }
+                    algorithmsValue.Dispose();
+                }
+                foreach (var algorithmsValue in privateKey.Values)
+                {
+                    algorithmsValue.Dispose();
                 }
 
-                generateAlgorithms.Dispose();
+                publicKey.Dispose();
+                privateKey.Dispose();
             }
         }
 
@@ -412,7 +398,6 @@ namespace LitJWT.Algorithms
 
         readonly ThreadLocal<ECDsa> publicKey;
         readonly ThreadLocal<ECDsa> privateKey;
-        readonly ThreadLocal<ConcurrentBag<AsymmetricAlgorithm>> generateAlgorithms;
 
         int isDisposed;
         byte[] header;
@@ -428,15 +413,10 @@ namespace LitJWT.Algorithms
             Base64.TryToBase64UrlUtf8(alg, buffer, out _);
             header = buffer.ToArray();
 
-            // Create a local version of the algorithm list for disposal.
-            generateAlgorithms = new ThreadLocal<ConcurrentBag<AsymmetricAlgorithm>>(
-                () => new ConcurrentBag<AsymmetricAlgorithm>(), true);
-
             // Create a local version of the public key instance for thread safety.
             publicKey = new ThreadLocal<ECDsa>(() =>
             {
                 var key = cert.GetECDsaPublicKey();
-                generateAlgorithms.Value.Add(key);
                 return key;
             }, true);
 
@@ -444,7 +424,6 @@ namespace LitJWT.Algorithms
             privateKey = new ThreadLocal<ECDsa>(() =>
             {
                 var key = cert.GetECDsaPrivateKey();
-                generateAlgorithms.Value.Add(key);
                 return key;
             }, true);
         }
@@ -483,15 +462,17 @@ namespace LitJWT.Algorithms
         {
             if (Interlocked.Increment(ref isDisposed) == 1)
             {
-                foreach (var algorithmsValue in generateAlgorithms.Values)
+                foreach (var algorithmsValue in publicKey.Values)
                 {
-                    foreach (var item in algorithmsValue)
-                    {
-                        item.Dispose();
-                    }
+                    algorithmsValue.Dispose();
+                }
+                foreach (var algorithmsValue in privateKey.Values)
+                {
+                    algorithmsValue.Dispose();
                 }
 
-                generateAlgorithms.Dispose();
+                publicKey.Dispose();
+                privateKey.Dispose();
             }
         }
 
