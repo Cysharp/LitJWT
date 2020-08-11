@@ -16,6 +16,14 @@ Install-Package LitJWT
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 ## Table of Contents
+
+- [How to use](#how-to-use)
+- [Custom Serializer](#custom-serializer)
+- [AlgorithmResolver](#algorithmresolver)
+- [Details of Performance](#details-of-performance)
+- [HMACSHA or RSA](#hmacsha-or-rsa)
+- [License](#license)
+
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 How to use
