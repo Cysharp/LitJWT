@@ -1,6 +1,7 @@
+[![GitHub Actions](https://github.com/Cysharp/LitJWT/workflows/Build-Debug/badge.svg)](https://github.com/Cysharp/LitJWT/actions) [![Releases](https://img.shields.io/github/release/Cysharp/LitJWT.svg)](https://github.com/Cysharp/LitJWT/releases)
+
 LitJWT
 ===
-[![CircleCI](https://circleci.com/gh/Cysharp/LitJWT.svg?style=svg)](https://circleci.com/gh/Cysharp/LitJWT)
 
 Lightweight, Fast [JWT(JSON Web Token)](https://jwt.io/) implementation for .NET Core. This library mainly focus on performance, 5 times faster encoding/decoding and very low allocation.
 
@@ -11,6 +12,11 @@ NuGet: [LitJWT](https://www.nuget.org/packages/LitJWT), Currently only supports 
 ```
 Install-Package LitJWT
 ```
+
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+## Table of Contents
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 How to use
 ---
