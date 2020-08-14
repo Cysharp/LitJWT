@@ -30,7 +30,7 @@ jobs:
           path: ./publish
 
   create-release:
-    needs: [build-dotnet, build-unity]
+    needs: [build-dotnet]
     runs-on: ubuntu-latest
     env:
       DOTNET_CLI_TELEMETRY_OPTOUT: 1
