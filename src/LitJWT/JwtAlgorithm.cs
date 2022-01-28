@@ -57,7 +57,6 @@ namespace LitJWT.Algorithms
         int isDisposed;
 
         public ReadOnlySpan<byte> HeaderBase64Url => header;
-        ConcurrentBag<HashAlgorithm> generatedAlgorithms = new ConcurrentBag<HashAlgorithm>();
 
         protected SymmetricJwtAlgorithmBase(byte[] key)
         {
@@ -69,11 +68,9 @@ namespace LitJWT.Algorithms
             Base64.TryToBase64UrlUtf8(alg, buffer, out _);
             header = buffer.ToArray();
 
-            // Create a local thread version of the hash algorithm instance for thread safety.
             hash = new ThreadLocal<HashAlgorithm>(() =>
             {
                 var newHash = CreateHashAlgorithm(key);
-                generatedAlgorithms.Add(newHash);
                 return newHash;
             }, false);
         }
@@ -105,10 +102,6 @@ namespace LitJWT.Algorithms
         {
             if (Interlocked.Increment(ref isDisposed) == 1)
             {
-                foreach (var item in generatedAlgorithms)
-                {
-                    item.Dispose();
-                }
                 hash.Dispose();
             }
         }
@@ -200,7 +193,6 @@ namespace LitJWT.Algorithms
 
         readonly ThreadLocal<RSA> publicKey;
         readonly ThreadLocal<RSA> privateKey;
-        readonly ConcurrentBag<RSA> generatedAlgorithms = new ConcurrentBag<RSA>();
 
         int isDisposed;
         byte[] header;
@@ -220,7 +212,6 @@ namespace LitJWT.Algorithms
             publicKey = new ThreadLocal<RSA>(() =>
             {
                 var key = cert?.GetRSAPublicKey() ?? publicKeyFactory();
-                generatedAlgorithms.Add(key);
                 return key;
             }, false);
 
@@ -228,7 +219,6 @@ namespace LitJWT.Algorithms
             privateKey = new ThreadLocal<RSA>(() =>
             {
                 var key = cert?.GetRSAPrivateKey() ?? privateKeyFactory();
-                generatedAlgorithms.Add(key);
                 return key;
             }, false);
         }
@@ -275,10 +265,6 @@ namespace LitJWT.Algorithms
         {
             if (Interlocked.Increment(ref isDisposed) == 1)
             {
-                foreach (var algorithmsValue in generatedAlgorithms)
-                {
-                    algorithmsValue.Dispose();
-                }
                 publicKey.Dispose();
                 privateKey.Dispose();
             }
@@ -398,7 +384,6 @@ namespace LitJWT.Algorithms
 
         readonly ThreadLocal<ECDsa> publicKey;
         readonly ThreadLocal<ECDsa> privateKey;
-        readonly ConcurrentBag<ECDsa> generatedAlgorithms = new ConcurrentBag<ECDsa>();
         int isDisposed;
         byte[] header;
         public ReadOnlySpan<byte> HeaderBase64Url => header;
@@ -417,7 +402,6 @@ namespace LitJWT.Algorithms
             publicKey = new ThreadLocal<ECDsa>(() =>
             {
                 var key = cert.GetECDsaPublicKey();
-                generatedAlgorithms.Add(key);
                 return key;
             }, false);
 
@@ -425,7 +409,6 @@ namespace LitJWT.Algorithms
             privateKey = new ThreadLocal<ECDsa>(() =>
             {
                 var key = cert.GetECDsaPrivateKey();
-                generatedAlgorithms.Add(key);
                 return key;
             }, false);
         }
@@ -464,10 +447,6 @@ namespace LitJWT.Algorithms
         {
             if (Interlocked.Increment(ref isDisposed) == 1)
             {
-                foreach (var algorithmsValue in generatedAlgorithms)
-                {
-                    algorithmsValue.Dispose();
-                }
                 publicKey.Dispose();
                 privateKey.Dispose();
             }
