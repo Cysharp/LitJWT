@@ -17,6 +17,8 @@ namespace LitJWT
         FailedVerifySignature,
         FailedVerifyExpire,
         FailedVerifyNotBefore,
+        InvalidHeaderFormat,
+        InvalidPayloadFormat,
     }
 
     public class JwtDecoder
@@ -275,19 +277,27 @@ namespace LitJWT
                     return DecodeResult.InvalidBase64UrlHeader;
                 }
 
-                var reader = new JsonReader(bytes.Slice(0, bytesWritten));
-                var count = 0;
-                while (reader.ReadIsInObject(ref count))
+                try
                 {
-                    // try to read algorithm span.
-                    if (reader.ReadPropertyNameSegmentRaw().SequenceEqual(JwtConstantsUtf8.Algorithm))
+                    var reader = new JsonReader(bytes.Slice(0, bytesWritten));
+                    var count = 0;
+                    while (reader.ReadIsInObject(ref count))
                     {
-                        algorithm = resolver.Resolve(reader.ReadStringSegmentRaw());
+                        // try to read algorithm span.
+                        if (reader.ReadPropertyNameSegmentRaw().SequenceEqual(JwtConstantsUtf8.Algorithm))
+                        {
+                            algorithm = resolver.Resolve(reader.ReadStringSegmentRaw());
+                        }
+                        else
+                        {
+                            reader.ReadNextBlock();
+                        }
                     }
-                    else
-                    {
-                        reader.ReadNextBlock();
-                    }
+                }
+                catch (JsonParsingException)
+                {
+                    payloadResult = default;
+                    return DecodeResult.InvalidHeaderFormat;
                 }
             }
 
@@ -307,26 +317,34 @@ namespace LitJWT
 
                     var decodedPayload = bytes.Slice(0, bytesWritten);
 
-                    var reader = new JsonReader(decodedPayload);
-                    var count = 0;
-                    while (reader.ReadIsInObject(ref count))
+                    try
                     {
-                        // try to read algorithm span.
-                        var rawSegment = reader.ReadPropertyNameSegmentRaw();
-                        if (rawSegment.SequenceEqual(JwtConstantsUtf8.Expiration))
+                        var reader = new JsonReader(decodedPayload);
+                        var count = 0;
+                        while (reader.ReadIsInObject(ref count))
                         {
-                            expiry = reader.ReadInt64();
+                            // try to read algorithm span.
+                            var rawSegment = reader.ReadPropertyNameSegmentRaw();
+                            if (rawSegment.SequenceEqual(JwtConstantsUtf8.Expiration))
+                            {
+                                expiry = reader.ReadInt64();
+                            }
+                            else if (rawSegment.SequenceEqual(JwtConstantsUtf8.NotBefore))
+                            {
+                                notBefore = reader.ReadInt64();
+                            }
+                            else
+                            {
+                                reader.ReadNextBlock();
+                            }
                         }
-                        else if (rawSegment.SequenceEqual(JwtConstantsUtf8.NotBefore))
-                        {
-                            notBefore = reader.ReadInt64();
-                        }
-                        else
-                        {
-                            reader.ReadNextBlock();
-                        }
-                    }
 
+                    }
+                    catch (JsonParsingException)
+                    {
+                        payloadResult = default;
+                        return DecodeResult.InvalidPayloadFormat;
+                    }
                     // and custom deserialize.
                     payloadResult = payloadParser(decodedPayload);
                 }
