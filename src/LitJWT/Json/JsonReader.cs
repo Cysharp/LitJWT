@@ -72,6 +72,8 @@ namespace Utf8Json
 
         JsonParsingException CreateParsingException(string expected)
         {
+            if (bytes.Length == 0) return new JsonParsingException("expected:'" + expected + "' however buffer length is zero.");
+
             var actual = ((char)bytes[offset]).ToString();
             var pos = offset;
 
