@@ -60,7 +60,7 @@ namespace ConsoleApp
             var rs256 = new LitJWT.JwtEncoder(new LitJWT.Algorithms.RS256Algorithm(() => RSA.Create(rsaParams), () => RSA.Create(rsaParams)));
             var foo = rs256.Encode(payload, null, (x, writer) => writer.Write(Utf8Json.JsonSerializer.SerializeUnsafe(x)));
 
-
+            
 
         }
     }

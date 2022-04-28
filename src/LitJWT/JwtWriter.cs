@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Buffers;
 using System.Text;
-using Utf8Json.Internal;
+using System.Text.Json;
 
 namespace LitJWT
 {
@@ -15,7 +15,14 @@ namespace LitJWT
         readonly IJwtAlgorithm algorithm;
         readonly long? expire;
 
+        internal readonly JsonSerializerOptions serializerOptions;
+
         public JwtWriter(IBufferWriter<byte> writer, IJwtAlgorithm algorithm, DateTimeOffset? expire)
+            : this(writer, algorithm, expire, null)
+        {
+        }
+
+        internal JwtWriter(IBufferWriter<byte> writer, IJwtAlgorithm algorithm, DateTimeOffset? expire, JsonSerializerOptions serializerOptions)
         {
             this.writer = writer;
             this.algorithm = algorithm;
@@ -27,6 +34,7 @@ namespace LitJWT
             {
                 this.expire = null;
             }
+            this.serializerOptions = serializerOptions;
         }
 
         public void Write(ReadOnlySpan<byte> payload)

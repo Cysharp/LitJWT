@@ -3,11 +3,13 @@
 LitJWT
 ===
 
-Lightweight, Fast [JWT(JSON Web Token)](https://jwt.io/) implementation for .NET Core. This library mainly focus on performance, 5 times faster encoding/decoding and very low allocation.
+Lightweight, Fast [JWT(JSON Web Token)](https://jwt.io/) implementation for .NET. This library mainly focus on performance, 5 times faster encoding/decoding and very low allocation.
 
 ![image](https://user-images.githubusercontent.com/46207/58414904-c4c31300-80b7-11e9-9bd2-12f794518494.png)
 
-NuGet: [LitJWT](https://www.nuget.org/packages/LitJWT), Currently only supports `.NET Core 2.1`(for performance reason, this libs uses many `Span<T>` based API).
+NuGet: [LitJWT](https://www.nuget.org/packages/LitJWT)
+
+Supported platform is `netstandard 2.1`, `net5.0` or greater.
 
 ```
 Install-Package LitJWT
@@ -40,8 +42,7 @@ var key = HS256Algorithm.GenerateRandomRecommendedKey();
 var encoder = new JwtEncoder(new HS256Algorithm(key));
 
 // Encode with payload, expire, and use specify payload serializer.
-var token = encoder.Encode(new { foo = "pay", bar = "load" }, TimeSpan.FromMinutes(30),
-    (x, writer) => writer.Write(Utf8Json.JsonSerializer.SerializeUnsafe(x)));
+var token = encoder.Encode(new { foo = "pay", bar = "load" }, TimeSpan.FromMinutes(30));
 ```
 
 ```csharp
@@ -49,7 +50,7 @@ var token = encoder.Encode(new { foo = "pay", bar = "load" }, TimeSpan.FromMinut
 var decoder = new JwtDecoder(encoder.SignAlgorithm);
 
 // Decode and verify, you can check the result.
-var result = decoder.TryDecode(token, x => Utf8Json.JsonSerializer.Deserialize<PayloadSample>(x.ToArray()), out var payload);
+var result = decoder.TryDecode(token, out var payload);
 if (result == DecodeResult.Success)
 {
     Console.WriteLine((payload.foo, payload.bar));
@@ -58,7 +59,9 @@ if (result == DecodeResult.Success)
 
 Custom Serializer
 ---
-Encode method receives `Action<T, JwtWriter> payloadWriter`. You have to invoke `writer.Write(ReadOnlySpan<byte> payload)` method to serialize. `ReadOnlySpan<byte>` must be Utf8 binary, so if you use utf8 based serializer(or Json writer) such as [Utf8Json](https://github.com/neuecc/Utf8Json), achives maximum performance.
+In default. LitJWT is using `System.Text.Json.JsonSerializer`. If you want to use custom `JsonSerializerOptions`, `JwtEncoder` and `JwtDecoder` have `JsonSerializerOptions serializerOptions` constructor overload.
+
+If you want to use another serializer, encode method receives `Action<T, JwtWriter> payloadWriter`. You have to invoke `writer.Write(ReadOnlySpan<byte> payload)` method to serialize. `ReadOnlySpan<byte>` must be Utf8 binary.
 
 Here is the sample of use JSON.NET, this have encoding overhead.
 
@@ -67,7 +70,7 @@ var token = encoder.Encode(new PayloadSample { foo = "pay", bar = "load" }, Time
     (x, writer) => writer.Write(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(x))));
 ```
 
-Decode method receives `delegate T PayloadParser<T>(ReadOnlySpan<byte> payload)`. `ReadOnlySpan<byte>` is utf8 json. Yes, utf8 based serialize is best but you can also use JSON.NET(but have encoding penalty).
+Decode method receives `delegate T PayloadParser<T>(ReadOnlySpan<byte> payload)`. `ReadOnlySpan<byte>` is utf8 json. Yes, utf8 based serializer is best but you can also use JSON.NET(but have encoding penalty).
 
 ```
 var result = decoder.TryDecode(token, x => JsonConvert.DeserializeObject<PayloadSample>(Encoding.UTF8.GetString(x)), out var payload);

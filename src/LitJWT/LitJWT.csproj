@@ -1,29 +1,31 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-    <PropertyGroup>
-        <TargetFrameworks>netcoreapp2.1;netstandard2.1</TargetFrameworks>
-        <LangVersion>7.3</LangVersion>
-        <OutputType>Library</OutputType>
-        <SignAssembly>true</SignAssembly>
-        <AssemblyOriginatorKeyFile>opensource.snk</AssemblyOriginatorKeyFile>
-        <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
-        <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
-        <NoWarn>1701;1702;1705;1591</NoWarn>
-        <Company>Cysharp</Company>
+	<PropertyGroup>
+		<TargetFrameworks>netstandard2.1;net5.0;net6.0</TargetFrameworks>
+		<LangVersion>9.0</LangVersion>
+		<OutputType>Library</OutputType>
+		<SignAssembly>true</SignAssembly>
+		<AssemblyOriginatorKeyFile>opensource.snk</AssemblyOriginatorKeyFile>
+		<GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
+		<AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+		<NoWarn>1701;1702;1705;1591</NoWarn>
+		<Company>Cysharp</Company>
 
-        <!-- NuGet -->
-        <PackageId>LitJWT</PackageId>
-        <PackageVersion>$(Version)</PackageVersion>
-        <Authors>Cysharp</Authors>
-        <Copyright>Cysharp</Copyright>
-        <Description>Lightweight, Fast JWT(JSON Web Token) implementation for .NET Core.</Description>
-        <PackageProjectUrl>https://github.com/Cysharp/LitJWT</PackageProjectUrl>
-        <RepositoryUrl>$(PackageProjectUrl)</RepositoryUrl>
-        <RepositoryType>git</RepositoryType>
-        <PackageTags>jwt, auth</PackageTags>
+		<!-- NuGet -->
+		<PackageId>LitJWT</PackageId>
+		<PackageVersion>$(Version)</PackageVersion>
+		<Authors>Cysharp</Authors>
+		<Copyright>Cysharp</Copyright>
+		<Description>Lightweight, Fast JWT(JSON Web Token) implementation for .NET Core.</Description>
+		<PackageProjectUrl>https://github.com/Cysharp/LitJWT</PackageProjectUrl>
+		<RepositoryUrl>$(PackageProjectUrl)</RepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+		<PackageTags>jwt, auth</PackageTags>
+	</PropertyGroup>
 
-
-    </PropertyGroup>
+	<ItemGroup Condition="$(TargetFramework) == 'netstandard2.1'">
+		<PackageReference Include="System.Text.Json" Version="6.0.3" />
+	</ItemGroup>
 
 </Project>

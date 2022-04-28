@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.CompilerServices;
 
-namespace Utf8Json.Internal
+namespace LitJWT
 {
     /// <summary>
     /// zero-allocate itoa, dtoa, atoi, atod converters.
