@@ -12,10 +12,7 @@ namespace LitJWT
         /// 0 ~ 9
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsNumber(byte c)
-        {
-            return (byte)'0' <= c && c <= (byte)'9';
-        }
+        public static bool IsNumber(byte c) => c >= NumericByte.Zero && c <= NumericByte.Nine;
 
         /// <summary>
         /// Is 0 ~ 9, '.', '+', '-'?
@@ -25,32 +22,17 @@ namespace LitJWT
         {
             switch (c)
             {
-                case 43: // +
-                case 45: // -
-                case 46: // .
-                case 48: // 0
-                case 49:
-                case 50:
-                case 51:
-                case 52:
-                case 53:
-                case 54:
-                case 55:
-                case 56:
-                case 57: // 9
+                case NumericByte.Plus:
+                case NumericByte.Minus:
+                case NumericByte.Dot:
                     return true;
-                case 44:
-                case 47:
                 default:
-                    return false;
+                    return IsNumber(c);
             }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static int ReadInt32(byte[] bytes, int offset, out int readCount)
-        {
-            return checked((int)ReadInt64(bytes, offset, out readCount));
-        }
+        public static int ReadInt32(byte[] bytes, int offset, out int readCount) => checked((int)ReadInt64(bytes, offset, out readCount));
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static long ReadInt64(ReadOnlySpan<byte> bytes, int offset, out int readCount)
@@ -58,186 +40,179 @@ namespace LitJWT
             var value = 0L;
             var sign = 1;
 
-            if (bytes[offset] == '-')
+            if (bytes[offset] == NumericByte.Minus)
             {
                 sign = -1;
+                ++offset;
             }
 
-            for (int i = ((sign == -1) ? offset + 1 : offset); i < bytes.Length; i++)
+            var offsetCounter = 0;
+
+            for (int i = offset; i < bytes.Length; i++)
             {
                 if (!IsNumber(bytes[i]))
                 {
-                    readCount = i - offset;
-                    goto END;
+                    offsetCounter = i - offset;
+                    break;
                 }
 
                 // long.MinValue causes overflow so use unchecked.
-                value = unchecked(value * 10 + (bytes[i] - '0'));
+                value = unchecked(value * 10 + (bytes[i] - NumericByte.Zero));
             }
-            readCount = bytes.Length - offset;
 
-            END:
+            readCount = offsetCounter > 0 ? offsetCounter : bytes.Length - offset;
+
             return unchecked(value * sign);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static int WriteInt32(Span<byte> buffer, int offset, int value)
-        {
-            return WriteInt64(buffer, offset, (long)value);
-        }
+        public static int WriteInt32(Span<byte> buffer, int offset, int value) => WriteInt64(buffer, offset, value);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int WriteInt64(Span<byte> buffer, int offset, long value)
         {
             var startOffset = offset;
 
-            long num1 = value, num2, num3, num4, num5, div;
+            long num1 = value;
 
             if (value < 0)
             {
-                if (value == long.MinValue) // -9223372036854775808
+                if (value == long.MinValue)
                 {
-                    buffer[offset++] = (byte)'-';
-                    buffer[offset++] = (byte)'9';
-                    buffer[offset++] = (byte)'2';
-                    buffer[offset++] = (byte)'2';
-                    buffer[offset++] = (byte)'3';
-                    buffer[offset++] = (byte)'3';
-                    buffer[offset++] = (byte)'7';
-                    buffer[offset++] = (byte)'2';
-                    buffer[offset++] = (byte)'0';
-                    buffer[offset++] = (byte)'3';
-                    buffer[offset++] = (byte)'6';
-                    buffer[offset++] = (byte)'8';
-                    buffer[offset++] = (byte)'5';
-                    buffer[offset++] = (byte)'4';
-                    buffer[offset++] = (byte)'7';
-                    buffer[offset++] = (byte)'7';
-                    buffer[offset++] = (byte)'5';
-                    buffer[offset++] = (byte)'8';
-                    buffer[offset++] = (byte)'0';
-                    buffer[offset++] = (byte)'8';
+                    buffer[offset++] = NumericByte.Minus;
+                    buffer[offset++] = NumericByte.Nine;
+                    buffer[offset++] = NumericByte.Two;
+                    buffer[offset++] = NumericByte.Two;
+                    buffer[offset++] = NumericByte.Three;
+                    buffer[offset++] = NumericByte.Three;
+                    buffer[offset++] = NumericByte.Seven;
+                    buffer[offset++] = NumericByte.Two;
+                    buffer[offset++] = NumericByte.Zero;
+                    buffer[offset++] = NumericByte.Three;
+                    buffer[offset++] = NumericByte.Six;
+                    buffer[offset++] = NumericByte.Eight;
+                    buffer[offset++] = NumericByte.Five;
+                    buffer[offset++] = NumericByte.Four;
+                    buffer[offset++] = NumericByte.Seven;
+                    buffer[offset++] = NumericByte.Seven;
+                    buffer[offset++] = NumericByte.Five;
+                    buffer[offset++] = NumericByte.Eight;
+                    buffer[offset++] = NumericByte.Zero;
+                    buffer[offset++] = NumericByte.Eight;
                     return offset - startOffset;
                 }
 
-                buffer[offset++] = (byte)'-';
+                buffer[offset++] = NumericByte.Minus;
                 num1 = unchecked(-value);
             }
 
-            // WriteUInt64(inlined)
+            SetNumber(ref num1, buffer, ref offset, out long num2);
 
-            if (num1 < 10000)
+            SetNumber(ref num2, buffer, ref offset, out long num3);
+
+            SetNumber(ref num3, buffer, ref offset, out long num4);
+
+            SetNumber(ref num4, buffer, ref offset, out long num5);
+
+            SetNumber(ref num5, buffer, ref offset, out _);
+
+            if (num5 != 0)
+                SetBytesByStage(ref num4, buffer, ref offset);
+
+            if (num4 != 0)
+                SetBytesByStage(ref num3, buffer, ref offset);
+
+            if (num3 != 0)
+                SetBytesByStage(ref num2, buffer, ref offset);
+
+            if (num2 != 0)
+                SetBytesByStage(ref num1, buffer, ref offset);
+
+            return offset - startOffset;
+        }
+
+        /// <summary>
+        /// Helper method that would write bytes to the buffer 
+        /// used for <see cref="WriteInt64(Span{byte}, int, long)"/>
+        /// </summary>
+        /// <param name="buffer"></param>
+        /// <param name="offset"></param>
+        /// <param name="number"></param>
+        /// <param name="multiplier"></param>
+        /// <param name="bitwise"></param>
+        /// <param name="base10"></param>
+        private static void WriteBytes(ref long number, Span<byte> buffer, ref int offset, long multiplier, int bitwise, int base10)
+        {
+            long div = (number * multiplier) >> bitwise;
+            number -= div * base10;
+            buffer[offset++] = (byte)('0' + div);
+        }
+
+        /// <summary>
+        /// Helper method that would use <see cref="WriteBytes(ref long, Span{byte}, ref int, long, int, int)"/> to write bytes to the buffer
+        /// based on a case. 
+        /// used for <see cref="WriteInt64(Span{byte}, int, long)"/>
+        /// </summary>
+        /// <param name="number"></param>
+        /// <param name="buffer"></param>
+        /// <param name="offset"></param>
+        /// <param name="stage"></param>
+        private static void SetBytesByStage(ref long number, Span<byte> buffer, ref int offset, int stage = 4)
+        {
+            if (number == 0) return;
+
+            switch (stage)
             {
-                if (num1 < 10) { goto L1; }
-                if (num1 < 100) { goto L2; }
-                if (num1 < 1000) { goto L3; }
-                goto L4;
+                case 1:
+                    break;
+                case 2:
+                    WriteBytes(ref number, buffer, ref offset, 6554L, 16, 10);
+                    break;
+                case 3:
+                    WriteBytes(ref number, buffer, ref offset, 5243L, 19, 100);
+                    WriteBytes(ref number, buffer, ref offset, 6554L, 16, 10);
+                    break;
+                case 4:
+                    WriteBytes(ref number, buffer, ref offset, 8389L, 23, 1000);
+                    WriteBytes(ref number, buffer, ref offset, 5243L, 19, 100);
+                    WriteBytes(ref number, buffer, ref offset, 6554L, 16, 10);
+                    break;
             }
-            else
+
+            buffer[offset++] = (byte)('0' + number);
+        }
+
+        /// <summary>
+        /// Helper method in conjection of <see cref="SetBytesByStage(ref long, Span{byte}, ref int, int)"/>
+        /// To apply the number rules and output the next number.
+        /// used for <see cref="WriteInt64(Span{byte}, int, long)"/>
+        /// </summary>
+        /// <param name="number"></param>
+        /// <param name="buffer"></param>
+        /// <param name="offset"></param>
+        /// <param name="nextNumber"></param>
+        private static void SetNumber(ref long number, Span<byte> buffer, ref int offset, out long nextNumber)
+        {
+            nextNumber = 0;
+            if (number > 0)
             {
-                num2 = num1 / 10000;
-                num1 -= num2 * 10000;
-                if (num2 < 10000)
+                if (number < 10000)
                 {
-                    if (num2 < 10) { goto L5; }
-                    if (num2 < 100) { goto L6; }
-                    if (num2 < 1000) { goto L7; }
-                    goto L8;
+                    if (number < 10)
+                        SetBytesByStage(ref number, buffer, ref offset, 1);
+                    else if (number < 100)
+                        SetBytesByStage(ref number, buffer, ref offset, 2);
+                    else if (number < 1000)
+                        SetBytesByStage(ref number, buffer, ref offset, 3);
+                    else
+                        SetBytesByStage(ref number, buffer, ref offset, 4);
                 }
                 else
                 {
-                    num3 = num2 / 10000;
-                    num2 -= num3 * 10000;
-                    if (num3 < 10000)
-                    {
-                        if (num3 < 10) { goto L9; }
-                        if (num3 < 100) { goto L10; }
-                        if (num3 < 1000) { goto L11; }
-                        goto L12;
-                    }
-                    else
-                    {
-                        num4 = num3 / 10000;
-                        num3 -= num4 * 10000;
-                        if (num4 < 10000)
-                        {
-                            if (num4 < 10) { goto L13; }
-                            if (num4 < 100) { goto L14; }
-                            if (num4 < 1000) { goto L15; }
-                            goto L16;
-                        }
-                        else
-                        {
-                            num5 = num4 / 10000;
-                            num4 -= num5 * 10000;
-                            if (num5 < 10000)
-                            {
-                                if (num5 < 10) { goto L17; }
-                                if (num5 < 100) { goto L18; }
-                                if (num5 < 1000) { goto L19; }
-                                goto L20;
-                            }
-                            L20:
-                            buffer[offset++] = (byte)('0' + (div = (num5 * 8389L) >> 23));
-                            num5 -= div * 1000;
-                            L19:
-                            buffer[offset++] = (byte)('0' + (div = (num5 * 5243L) >> 19));
-                            num5 -= div * 100;
-                            L18:
-                            buffer[offset++] = (byte)('0' + (div = (num5 * 6554L) >> 16));
-                            num5 -= div * 10;
-                            L17:
-                            buffer[offset++] = (byte)('0' + (num5));
-                        }
-                        L16:
-                        buffer[offset++] = (byte)('0' + (div = (num4 * 8389L) >> 23));
-                        num4 -= div * 1000;
-                        L15:
-                        buffer[offset++] = (byte)('0' + (div = (num4 * 5243L) >> 19));
-                        num4 -= div * 100;
-                        L14:
-                        buffer[offset++] = (byte)('0' + (div = (num4 * 6554L) >> 16));
-                        num4 -= div * 10;
-                        L13:
-                        buffer[offset++] = (byte)('0' + (num4));
-                    }
-                    L12:
-                    buffer[offset++] = (byte)('0' + (div = (num3 * 8389L) >> 23));
-                    num3 -= div * 1000;
-                    L11:
-                    buffer[offset++] = (byte)('0' + (div = (num3 * 5243L) >> 19));
-                    num3 -= div * 100;
-                    L10:
-                    buffer[offset++] = (byte)('0' + (div = (num3 * 6554L) >> 16));
-                    num3 -= div * 10;
-                    L9:
-                    buffer[offset++] = (byte)('0' + (num3));
+                    nextNumber = number / 10000;
+                    number %= 10000;
                 }
-                L8:
-                buffer[offset++] = (byte)('0' + (div = (num2 * 8389L) >> 23));
-                num2 -= div * 1000;
-                L7:
-                buffer[offset++] = (byte)('0' + (div = (num2 * 5243L) >> 19));
-                num2 -= div * 100;
-                L6:
-                buffer[offset++] = (byte)('0' + (div = (num2 * 6554L) >> 16));
-                num2 -= div * 10;
-                L5:
-                buffer[offset++] = (byte)('0' + (num2));
             }
-            L4:
-            buffer[offset++] = (byte)('0' + (div = (num1 * 8389L) >> 23));
-            num1 -= div * 1000;
-            L3:
-            buffer[offset++] = (byte)('0' + (div = (num1 * 5243L) >> 19));
-            num1 -= div * 100;
-            L2:
-            buffer[offset++] = (byte)('0' + (div = (num1 * 6554L) >> 16));
-            num1 -= div * 10;
-            L1:
-            buffer[offset++] = (byte)('0' + (num1));
-
-            return offset - startOffset;
         }
     }
 }
