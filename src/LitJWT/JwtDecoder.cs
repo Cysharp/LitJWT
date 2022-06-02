@@ -172,17 +172,25 @@ namespace LitJWT
                         return DecodeResult.InvalidBase64UrlHeader;
                     }
 
-                    var reader = new System.Text.Json.Utf8JsonReader(bytes.Slice(0, bytesWritten));
-                    while (reader.Read())
+                    try
                     {
-                        if (reader.TokenType == JsonTokenType.EndObject) break;
-
-                        // try to read algorithm span.
-                        if (reader.TokenType == JsonTokenType.PropertyName && reader.ValueTextEquals(JwtConstantsUtf8.Algorithm))
+                        var reader = new System.Text.Json.Utf8JsonReader(bytes.Slice(0, bytesWritten));
+                        while (reader.Read())
                         {
-                            reader.Read();
-                            algorithm = resolver.Resolve(reader.ValueSpan);
+                            if (reader.TokenType == JsonTokenType.EndObject) break;
+
+                            // try to read algorithm span.
+                            if (reader.TokenType == JsonTokenType.PropertyName && reader.ValueTextEquals(JwtConstantsUtf8.Algorithm))
+                            {
+                                reader.Read();
+                                algorithm = resolver.Resolve(reader.ValueSpan);
+                            }
                         }
+                    }
+                    catch (JsonException)
+                    {
+                        payloadResult = default;
+                        return DecodeResult.InvalidHeaderFormat;
                     }
                 }
             }
@@ -202,24 +210,32 @@ namespace LitJWT
                     }
 
                     var decodedPayload = bytes.Slice(0, bytesWritten);
-                    var reader = new System.Text.Json.Utf8JsonReader(decodedPayload);
-                    while (reader.Read())
+                    try
                     {
-                        if (reader.TokenType == System.Text.Json.JsonTokenType.EndObject) break;
-
-                        if (reader.TokenType == JsonTokenType.PropertyName)
+                        var reader = new System.Text.Json.Utf8JsonReader(decodedPayload);
+                        while (reader.Read())
                         {
-                            if (reader.ValueTextEquals(JwtConstantsUtf8.Expiration))
+                            if (reader.TokenType == System.Text.Json.JsonTokenType.EndObject) break;
+
+                            if (reader.TokenType == JsonTokenType.PropertyName)
                             {
-                                reader.Read();
-                                expiry = reader.GetInt64();
-                            }
-                            else if (reader.ValueTextEquals(JwtConstantsUtf8.NotBefore))
-                            {
-                                reader.Read();
-                                notBefore = reader.GetInt64();
+                                if (reader.ValueTextEquals(JwtConstantsUtf8.Expiration))
+                                {
+                                    reader.Read();
+                                    expiry = reader.GetInt64();
+                                }
+                                else if (reader.ValueTextEquals(JwtConstantsUtf8.NotBefore))
+                                {
+                                    reader.Read();
+                                    notBefore = reader.GetInt64();
+                                }
                             }
                         }
+                    }
+                    catch (JsonException)
+                    {
+                        payloadResult = default;
+                        return DecodeResult.InvalidPayloadFormat;
                     }
 
                     // and custom deserialize.
@@ -292,24 +308,32 @@ namespace LitJWT
                 }
 
                 var decodedPayload = bytes.Slice(0, bytesWritten);
-                var reader = new System.Text.Json.Utf8JsonReader(decodedPayload);
-                while (reader.Read())
+                try
                 {
-                    if (reader.TokenType == System.Text.Json.JsonTokenType.EndObject) break;
-
-                    // try to read algorithm span.
-                    if (reader.TokenType == JsonTokenType.PropertyName)
+                    var reader = new System.Text.Json.Utf8JsonReader(decodedPayload);
+                    while (reader.Read())
                     {
-                        if (reader.ValueTextEquals(JwtConstantsUtf8.Algorithm))
+                        if (reader.TokenType == System.Text.Json.JsonTokenType.EndObject) break;
+
+                        // try to read algorithm span.
+                        if (reader.TokenType == JsonTokenType.PropertyName)
                         {
-                            if (!reader.Read())
+                            if (reader.ValueTextEquals(JwtConstantsUtf8.Algorithm))
                             {
-                                payloadResult = default;
-                                return DecodeResult.InvalidHeaderFormat;
+                                if (!reader.Read())
+                                {
+                                    payloadResult = default;
+                                    return DecodeResult.InvalidHeaderFormat;
+                                }
+                                algorithm = resolver.Resolve(reader.ValueSpan);
                             }
-                            algorithm = resolver.Resolve(reader.ValueSpan);
                         }
                     }
+                }
+                catch (JsonException)
+                {
+                    payloadResult = default;
+                    return DecodeResult.InvalidHeaderFormat;
                 }
             }
 
@@ -329,32 +353,40 @@ namespace LitJWT
 
                     var decodedPayload = bytes.Slice(0, bytesWritten);
 
-                    var reader = new System.Text.Json.Utf8JsonReader(decodedPayload);
-                    while (reader.Read())
+                    try
                     {
-                        if (reader.TokenType == System.Text.Json.JsonTokenType.EndObject) break;
-
-                        if (reader.TokenType == JsonTokenType.PropertyName)
+                        var reader = new System.Text.Json.Utf8JsonReader(decodedPayload);
+                        while (reader.Read())
                         {
-                            if (reader.ValueTextEquals(JwtConstantsUtf8.Expiration))
+                            if (reader.TokenType == System.Text.Json.JsonTokenType.EndObject) break;
+
+                            if (reader.TokenType == JsonTokenType.PropertyName)
                             {
-                                if (!reader.Read())
+                                if (reader.ValueTextEquals(JwtConstantsUtf8.Expiration))
                                 {
-                                    payloadResult = default;
-                                    return DecodeResult.InvalidHeaderFormat;
+                                    if (!reader.Read())
+                                    {
+                                        payloadResult = default;
+                                        return DecodeResult.InvalidHeaderFormat;
+                                    }
+                                    expiry = reader.GetInt64();
                                 }
-                                expiry = reader.GetInt64();
-                            }
-                            else if (reader.ValueTextEquals(JwtConstantsUtf8.NotBefore))
-                            {
-                                if (!reader.Read())
+                                else if (reader.ValueTextEquals(JwtConstantsUtf8.NotBefore))
                                 {
-                                    payloadResult = default;
-                                    return DecodeResult.InvalidHeaderFormat;
+                                    if (!reader.Read())
+                                    {
+                                        payloadResult = default;
+                                        return DecodeResult.InvalidHeaderFormat;
+                                    }
+                                    notBefore = reader.GetInt64();
                                 }
-                                notBefore = reader.GetInt64();
                             }
                         }
+                    }
+                    catch (JsonException)
+                    {
+                        payloadResult = default;
+                        return DecodeResult.InvalidHeaderFormat;
                     }
 
                     // and custom deserialize.
@@ -439,17 +471,25 @@ namespace LitJWT
                         return DecodeResult.InvalidBase64UrlHeader;
                     }
 
-                    var reader = new System.Text.Json.Utf8JsonReader(bytes.Slice(0, bytesWritten));
-                    while (reader.Read())
+                    try
                     {
-                        if (reader.TokenType == JsonTokenType.EndObject) break;
-
-                        // try to read algorithm span.
-                        if (reader.TokenType == JsonTokenType.PropertyName && reader.ValueTextEquals(JwtConstantsUtf8.Algorithm))
+                        var reader = new System.Text.Json.Utf8JsonReader(bytes.Slice(0, bytesWritten));
+                        while (reader.Read())
                         {
-                            reader.Read();
-                            algorithm = resolver.Resolve(reader.ValueSpan);
+                            if (reader.TokenType == JsonTokenType.EndObject) break;
+
+                            // try to read algorithm span.
+                            if (reader.TokenType == JsonTokenType.PropertyName && reader.ValueTextEquals(JwtConstantsUtf8.Algorithm))
+                            {
+                                reader.Read();
+                                algorithm = resolver.Resolve(reader.ValueSpan);
+                            }
                         }
+                    }
+                    catch (JsonException)
+                    {
+                        payloadResult = default;
+                        return DecodeResult.InvalidHeaderFormat;
                     }
                 }
             }
@@ -469,24 +509,32 @@ namespace LitJWT
                     }
 
                     var decodedPayload = bytes.Slice(0, bytesWritten);
-                    var reader = new System.Text.Json.Utf8JsonReader(decodedPayload);
-                    while (reader.Read())
+                    try
                     {
-                        if (reader.TokenType == System.Text.Json.JsonTokenType.EndObject) break;
-
-                        if (reader.TokenType == JsonTokenType.PropertyName)
+                        var reader = new System.Text.Json.Utf8JsonReader(decodedPayload);
+                        while (reader.Read())
                         {
-                            if (reader.ValueTextEquals(JwtConstantsUtf8.Expiration))
+                            if (reader.TokenType == System.Text.Json.JsonTokenType.EndObject) break;
+
+                            if (reader.TokenType == JsonTokenType.PropertyName)
                             {
-                                reader.Read();
-                                expiry = reader.GetInt64();
-                            }
-                            else if (reader.ValueTextEquals(JwtConstantsUtf8.NotBefore))
-                            {
-                                reader.Read();
-                                notBefore = reader.GetInt64();
+                                if (reader.ValueTextEquals(JwtConstantsUtf8.Expiration))
+                                {
+                                    reader.Read();
+                                    expiry = reader.GetInt64();
+                                }
+                                else if (reader.ValueTextEquals(JwtConstantsUtf8.NotBefore))
+                                {
+                                    reader.Read();
+                                    notBefore = reader.GetInt64();
+                                }
                             }
                         }
+                    }
+                    catch (JsonException)
+                    {
+                        payloadResult = default;
+                        return DecodeResult.InvalidPayloadFormat;
                     }
 
                     // and custom deserialize.
@@ -554,24 +602,32 @@ namespace LitJWT
                 }
 
                 var decodedPayload = bytes.Slice(0, bytesWritten);
-                var reader = new System.Text.Json.Utf8JsonReader(decodedPayload);
-                while (reader.Read())
+                try
                 {
-                    if (reader.TokenType == System.Text.Json.JsonTokenType.EndObject) break;
-
-                    // try to read algorithm span.
-                    if (reader.TokenType == JsonTokenType.PropertyName)
+                    var reader = new System.Text.Json.Utf8JsonReader(decodedPayload);
+                    while (reader.Read())
                     {
-                        if (reader.ValueTextEquals(JwtConstantsUtf8.Algorithm))
+                        if (reader.TokenType == System.Text.Json.JsonTokenType.EndObject) break;
+
+                        // try to read algorithm span.
+                        if (reader.TokenType == JsonTokenType.PropertyName)
                         {
-                            if (!reader.Read())
+                            if (reader.ValueTextEquals(JwtConstantsUtf8.Algorithm))
                             {
-                                payloadResult = default;
-                                return DecodeResult.InvalidHeaderFormat;
+                                if (!reader.Read())
+                                {
+                                    payloadResult = default;
+                                    return DecodeResult.InvalidHeaderFormat;
+                                }
+                                algorithm = resolver.Resolve(reader.ValueSpan);
                             }
-                            algorithm = resolver.Resolve(reader.ValueSpan);
                         }
                     }
+                }
+                catch (JsonException)
+                {
+                    payloadResult = default;
+                    return DecodeResult.InvalidHeaderFormat;
                 }
             }
 
@@ -591,32 +647,40 @@ namespace LitJWT
 
                     var decodedPayload = bytes.Slice(0, bytesWritten);
 
-                    var reader = new System.Text.Json.Utf8JsonReader(decodedPayload);
-                    while (reader.Read())
+                    try
                     {
-                        if (reader.TokenType == System.Text.Json.JsonTokenType.EndObject) break;
-
-                        if (reader.TokenType == JsonTokenType.PropertyName)
+                        var reader = new System.Text.Json.Utf8JsonReader(decodedPayload);
+                        while (reader.Read())
                         {
-                            if (reader.ValueTextEquals(JwtConstantsUtf8.Expiration))
+                            if (reader.TokenType == System.Text.Json.JsonTokenType.EndObject) break;
+
+                            if (reader.TokenType == JsonTokenType.PropertyName)
                             {
-                                if (!reader.Read())
+                                if (reader.ValueTextEquals(JwtConstantsUtf8.Expiration))
                                 {
-                                    payloadResult = default;
-                                    return DecodeResult.InvalidHeaderFormat;
+                                    if (!reader.Read())
+                                    {
+                                        payloadResult = default;
+                                        return DecodeResult.InvalidHeaderFormat;
+                                    }
+                                    expiry = reader.GetInt64();
                                 }
-                                expiry = reader.GetInt64();
-                            }
-                            else if (reader.ValueTextEquals(JwtConstantsUtf8.NotBefore))
-                            {
-                                if (!reader.Read())
+                                else if (reader.ValueTextEquals(JwtConstantsUtf8.NotBefore))
                                 {
-                                    payloadResult = default;
-                                    return DecodeResult.InvalidHeaderFormat;
+                                    if (!reader.Read())
+                                    {
+                                        payloadResult = default;
+                                        return DecodeResult.InvalidHeaderFormat;
+                                    }
+                                    notBefore = reader.GetInt64();
                                 }
-                                notBefore = reader.GetInt64();
                             }
                         }
+                    }
+                    catch (JsonException)
+                    {
+                        payloadResult = default;
+                        return DecodeResult.InvalidPayloadFormat;
                     }
 
                     // and custom deserialize.
