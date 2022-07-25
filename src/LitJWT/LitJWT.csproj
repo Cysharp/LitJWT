@@ -22,6 +22,7 @@
 		<RepositoryUrl>$(PackageProjectUrl)</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
 		<PackageTags>jwt, auth</PackageTags>
+        <IsPackable>true</IsPackable>
 	</PropertyGroup>
 
 	<ItemGroup Condition="$(TargetFramework) == 'netstandard2.1'">
