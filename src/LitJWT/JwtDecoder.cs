@@ -6,7 +6,7 @@ using System.Text.Json;
 namespace LitJWT
 {
     public delegate T PayloadParser<T>(ReadOnlySpan<byte> payload);
-    public delegate bool LifetimeValidator<T>(DateTimeOffset? notBefore, DateTimeOffset? expires, T token, TokenValidationParameters<T> parameters);
+    public delegate DecodeResult LifetimeValidator<T>(DateTimeOffset? notBefore, DateTimeOffset? expires, T token, TokenValidationParameters<T> parameters);
     internal delegate T InternalPayloadParser<T>(ReadOnlySpan<byte> payload, JsonSerializerOptions serializerOptions);
 
     public enum DecodeResult
