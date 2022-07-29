@@ -660,7 +660,10 @@ namespace LitJWT
         }
 
         DecodeResult TryDecodeCore<T>(
-            ReadOnlySpan<char> token, InternalPayloadParser<T> payloadParser, out T payloadResult)
+            ReadOnlySpan<char> token,
+            InternalPayloadParser<T> payloadParser,
+            TokenValidationParameters<T> validationParameters,
+            out T payloadResult)
         {
             Split(
                 token,
@@ -770,22 +773,42 @@ namespace LitJWT
                     ArrayPool<byte>.Shared.Return(rentBytes);
                 }
             }
-            if (expiry != null)
+
+            if (validationParameters.ValidateLifetime || validationParameters.LifetimeValidator != null)
             {
-                var now = DateTimeOffset.UtcNow;
-                var expireTime = DateTimeOffset.FromUnixTimeSeconds(expiry.Value);
-                if (expireTime - now < TimeSpan.Zero)
+                DateTimeOffset? notBeforeDateTimeOffset =
+                    notBefore == null ? null : DateTimeOffset.FromUnixTimeSeconds(notBefore.Value);
+
+                DateTimeOffset? expiryDateTimeOffset =
+                    expiry == null ? null : DateTimeOffset.FromUnixTimeSeconds(expiry.Value);
+
+                if (validationParameters.LifetimeValidator != null)
                 {
-                    return DecodeResult.FailedVerifyExpire;
+                    DecodeResult result = validationParameters.LifetimeValidator(
+                        notBeforeDateTimeOffset,
+                        expiryDateTimeOffset,
+                        payloadResult,
+                        validationParameters);
+
+                    if (result != DecodeResult.Success)
+                        return result;
                 }
-            }
-            if (notBefore != null)
-            {
-                var now = DateTimeOffset.UtcNow;
-                var notBeforeTime = DateTimeOffset.FromUnixTimeSeconds(notBefore.Value);
-                if (now - notBeforeTime < TimeSpan.Zero)
+                else
                 {
-                    return DecodeResult.FailedVerifyNotBefore;
+                    var now = DateTimeOffset.UtcNow;
+                    if (notBeforeDateTimeOffset.HasValue)
+                    {
+                        TimeSpan diff = now - notBeforeDateTimeOffset.Value;
+                        if (diff.Duration() > validationParameters.ClockSkew)
+                            return DecodeResult.FailedVerifyNotBefore;
+                    }
+
+                    if (expiryDateTimeOffset.HasValue)
+                    {
+                        TimeSpan diff = expiryDateTimeOffset.Value - now;
+                        if (diff.Duration() > validationParameters.ClockSkew)
+                            return DecodeResult.FailedVerifyExpire;
+                    }
                 }
             }
 
