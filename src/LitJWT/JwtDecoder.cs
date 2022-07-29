@@ -774,43 +774,11 @@ namespace LitJWT
                 }
             }
 
-            if (validationParameters.ValidateLifetime || validationParameters.LifetimeValidator != null)
-            {
-                DateTimeOffset? notBeforeDateTimeOffset =
-                    notBefore == null ? null : DateTimeOffset.FromUnixTimeSeconds(notBefore.Value);
+            DecodeResult lifetimeValidationResult = ValidateTokenLifetime(
+                notBefore, expiry, validationParameters, payloadResult);
 
-                DateTimeOffset? expiryDateTimeOffset =
-                    expiry == null ? null : DateTimeOffset.FromUnixTimeSeconds(expiry.Value);
-
-                if (validationParameters.LifetimeValidator != null)
-                {
-                    DecodeResult result = validationParameters.LifetimeValidator(
-                        notBeforeDateTimeOffset,
-                        expiryDateTimeOffset,
-                        payloadResult,
-                        validationParameters);
-
-                    if (result != DecodeResult.Success)
-                        return result;
-                }
-                else
-                {
-                    var now = DateTimeOffset.UtcNow;
-                    if (notBeforeDateTimeOffset.HasValue)
-                    {
-                        TimeSpan diff = now - notBeforeDateTimeOffset.Value;
-                        if (diff.Duration() > validationParameters.ClockSkew)
-                            return DecodeResult.FailedVerifyNotBefore;
-                    }
-
-                    if (expiryDateTimeOffset.HasValue)
-                    {
-                        TimeSpan diff = expiryDateTimeOffset.Value - now;
-                        if (diff.Duration() > validationParameters.ClockSkew)
-                            return DecodeResult.FailedVerifyExpire;
-                    }
-                }
-            }
+            if (lifetimeValidationResult != DecodeResult.Success)
+                return lifetimeValidationResult;
 
             // parsing signature.
             {
@@ -844,6 +812,50 @@ namespace LitJWT
             }
 
             // all ok
+            return DecodeResult.Success;
+        }
+
+        static DecodeResult ValidateTokenLifetime<T>(
+            long? notBeforeUnixEpoch,
+            long? expiryUnixEpoch,
+            TokenValidationParameters<T> validationParameters,
+            T payloadResult)
+        {
+            if (!validationParameters.ValidateLifetime && validationParameters.LifetimeValidator is null)
+                return DecodeResult.Success;
+
+            DateTimeOffset? notBeforeDateTimeOffset = notBeforeUnixEpoch is null
+                ? null
+                : DateTimeOffset.FromUnixTimeSeconds(notBeforeUnixEpoch.Value);
+
+            DateTimeOffset? expiryDateTimeOffset = expiryUnixEpoch is null
+                ? null
+                : DateTimeOffset.FromUnixTimeSeconds(expiryUnixEpoch.Value);
+
+            if (validationParameters.LifetimeValidator is not null)
+            {
+                return validationParameters.LifetimeValidator(
+                    notBeforeDateTimeOffset,
+                    expiryDateTimeOffset,
+                    payloadResult,
+                    validationParameters);
+            }
+            
+            DateTimeOffset now = DateTimeOffset.UtcNow;
+            if (notBeforeDateTimeOffset.HasValue)
+            {
+                TimeSpan diff = now - notBeforeDateTimeOffset.Value;
+                if (diff.Duration() > validationParameters.ClockSkew)
+                    return DecodeResult.FailedVerifyNotBefore;
+            }
+
+            if (expiryDateTimeOffset.HasValue)
+            {
+                TimeSpan diff = expiryDateTimeOffset.Value - now;
+                if (diff.Duration() > validationParameters.ClockSkew)
+                    return DecodeResult.FailedVerifyExpire;
+            }
+
             return DecodeResult.Success;
         }
     }
