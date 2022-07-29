@@ -6,6 +6,7 @@ using System.Text.Json;
 namespace LitJWT
 {
     public delegate T PayloadParser<T>(ReadOnlySpan<byte> payload);
+    public delegate bool LifetimeValidator<T>(DateTimeOffset? notBefore, DateTimeOffset? expires, T token, TokenValidationParameters<T> parameters);
     internal delegate T InternalPayloadParser<T>(ReadOnlySpan<byte> payload, JsonSerializerOptions serializerOptions);
 
     public enum DecodeResult
@@ -22,6 +23,15 @@ namespace LitJWT
         InvalidPayloadFormat,
     }
 
+    public class TokenValidationParameters<T>
+    {
+        public bool ValidateLifetime { get; set; } = true;
+        public TimeSpan ClockSkew { get; set; } = DefaultClockSkew;
+        public LifetimeValidator<T>? LifetimeValidator { get; set; } = null;
+
+        public static readonly TimeSpan DefaultClockSkew = TimeSpan.FromMinutes(5);
+    }
+
     public class JwtDecoder
     {
         readonly JwtAlgorithmResolver resolver;
@@ -31,11 +41,11 @@ namespace LitJWT
             : this(new JwtAlgorithmResolver(algorithms))
         {
         }
+
         public JwtDecoder(IJwtAlgorithm[] algorithms, JsonSerializerOptions serializerOptions)
             : this(new JwtAlgorithmResolver(algorithms), serializerOptions)
         {
         }
-
 
         public JwtDecoder(JwtAlgorithmResolver resolver)
             : this(resolver, null)
