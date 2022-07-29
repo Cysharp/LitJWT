@@ -58,7 +58,12 @@ namespace LitJWT
             this.serializerOptions = serializerOptions;
         }
 
-        static void Split(ReadOnlySpan<char> text, out ReadOnlySpan<char> header, out ReadOnlySpan<char> payload, out ReadOnlySpan<char> headerAndPayload, out ReadOnlySpan<char> signature)
+        static void Split(
+            ReadOnlySpan<char> text,
+            out ReadOnlySpan<char> header,
+            out ReadOnlySpan<char> payload,
+            out ReadOnlySpan<char> headerAndPayload,
+            out ReadOnlySpan<char> signature)
         {
             header = default;
             payload = default;
@@ -87,7 +92,12 @@ namespace LitJWT
             }
         }
 
-        static void Split(ReadOnlySpan<byte> text, out ReadOnlySpan<byte> header, out ReadOnlySpan<byte> payload, out ReadOnlySpan<byte> headerAndPayload, out ReadOnlySpan<byte> signature)
+        static void Split(
+            ReadOnlySpan<byte> text,
+            out ReadOnlySpan<byte> header,
+            out ReadOnlySpan<byte> payload,
+            out ReadOnlySpan<byte> headerAndPayload,
+            out ReadOnlySpan<byte> signature)
         {
             header = default;
             payload = default;
@@ -159,9 +169,14 @@ namespace LitJWT
             }
         }
 
-        public DecodeResult TryDecode<T>(ReadOnlySpan<byte> utf8token, out T payloadResult) => TryDecodeCore(utf8token, static (x, options) => JsonSerializer.Deserialize<T>(x, options), out payloadResult);
-        public DecodeResult TryDecode<T>(string token, out T payloadResult) => TryDecodeCore(token.AsSpan(), static (x, options) => JsonSerializer.Deserialize<T>(x, options), out payloadResult);
-        public DecodeResult TryDecode<T>(ReadOnlySpan<char> token, out T payloadResult) => TryDecodeCore(token, static (x, options) => JsonSerializer.Deserialize<T>(x, options), out payloadResult);
+        public DecodeResult TryDecode<T>(ReadOnlySpan<byte> utf8token, out T payloadResult)
+            => TryDecodeCore(utf8token, static (x, options) => JsonSerializer.Deserialize<T>(x, options), out payloadResult);
+
+        public DecodeResult TryDecode<T>(string token, out T payloadResult)
+            => TryDecodeCore(token.AsSpan(), static (x, options) => JsonSerializer.Deserialize<T>(x, options), out payloadResult);
+
+        public DecodeResult TryDecode<T>(ReadOnlySpan<char> token, out T payloadResult)
+            => TryDecodeCore(token, static (x, options) => JsonSerializer.Deserialize<T>(x, options), out payloadResult);
 
         public DecodeResult TryDecode<T>(ReadOnlySpan<byte> utf8token, PayloadParser<T> payloadParser, out T payloadResult)
         {
@@ -302,9 +317,15 @@ namespace LitJWT
             return TryDecode<T>(token.AsSpan(), payloadParser, out payloadResult);
         }
 
-        public DecodeResult TryDecode<T>(ReadOnlySpan<char> token, PayloadParser<T> payloadParser, out T payloadResult)
+        public DecodeResult TryDecode<T>(
+            ReadOnlySpan<char> token, PayloadParser<T> payloadParser, out T payloadResult)
         {
-            Split(token, out var header, out var payload, out var headerAndPayload, out var signature);
+            Split(
+                token,
+                out var header,
+                out var payload,
+                out var headerAndPayload,
+                out var signature);
 
             IJwtAlgorithm algorithm = null;
 
@@ -462,9 +483,15 @@ namespace LitJWT
         }
 
         // note:ugly copy and paste code...
-        DecodeResult TryDecodeCore<T>(ReadOnlySpan<byte> utf8token, InternalPayloadParser<T> payloadParser, out T payloadResult)
+        DecodeResult TryDecodeCore<T>(
+            ReadOnlySpan<byte> utf8token, InternalPayloadParser<T> payloadParser, out T payloadResult)
         {
-            Split(utf8token, out var header, out var payload, out var headerAndPayload, out var signature);
+            Split(
+                utf8token,
+                out var header,
+                out var payload,
+                out var headerAndPayload,
+                out var signature);
 
             IJwtAlgorithm algorithm = null;
 
@@ -596,9 +623,15 @@ namespace LitJWT
             return DecodeResult.Success;
         }
 
-        DecodeResult TryDecodeCore<T>(ReadOnlySpan<char> token, InternalPayloadParser<T> payloadParser, out T payloadResult)
+        DecodeResult TryDecodeCore<T>(
+            ReadOnlySpan<char> token, InternalPayloadParser<T> payloadParser, out T payloadResult)
         {
-            Split(token, out var header, out var payload, out var headerAndPayload, out var signature);
+            Split(
+                token,
+                out var header,
+                out var payload,
+                out var headerAndPayload,
+                out var signature);
 
             IJwtAlgorithm algorithm = null;
 
