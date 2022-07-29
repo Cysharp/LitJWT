@@ -171,12 +171,21 @@ namespace LitJWT
 
         public DecodeResult TryDecode<T>(ReadOnlySpan<byte> utf8token, out T payloadResult)
             => TryDecodeCore(utf8token, static (x, options) => JsonSerializer.Deserialize<T>(x, options), out payloadResult);
+        
+        public DecodeResult TryDecode<T>(ReadOnlySpan<byte> utf8token, TokenValidationParameters<T> validationParameters, out T payloadResult)
+            => throw new NotImplementedException();
 
         public DecodeResult TryDecode<T>(string token, out T payloadResult)
             => TryDecodeCore(token.AsSpan(), static (x, options) => JsonSerializer.Deserialize<T>(x, options), out payloadResult);
 
+        public DecodeResult TryDecode<T>(string token, TokenValidationParameters<T> validationParameters, out T payloadResult)
+            => throw new NotImplementedException();
+
         public DecodeResult TryDecode<T>(ReadOnlySpan<char> token, out T payloadResult)
             => TryDecodeCore(token, static (x, options) => JsonSerializer.Deserialize<T>(x, options), out payloadResult);
+        
+        public DecodeResult TryDecode<T>(ReadOnlySpan<char> token, TokenValidationParameters<T> validationParameters, out T payloadResult)
+            => throw new NotImplementedException();
 
         public DecodeResult TryDecode<T>(ReadOnlySpan<byte> utf8token, PayloadParser<T> payloadParser, out T payloadResult)
         {
@@ -312,9 +321,27 @@ namespace LitJWT
             return DecodeResult.Success;
         }
 
+        public DecodeResult TryDecode<T>(
+            ReadOnlySpan<byte> utf8token,
+            PayloadParser<T> payloadParser,
+            TokenValidationParameters<T> validationParameters,
+            out T payloadResult)
+        {
+            throw new NotImplementedException();
+        }
+
         public DecodeResult TryDecode<T>(string token, PayloadParser<T> payloadParser, out T payloadResult)
         {
             return TryDecode<T>(token.AsSpan(), payloadParser, out payloadResult);
+        }
+
+        public DecodeResult TryDecode<T>(
+            string token,
+            PayloadParser<T> payloadParser,
+            TokenValidationParameters<T> validationParameters,
+            out T payloadResult)
+        {
+            throw new NotImplementedException();
         }
 
         public DecodeResult TryDecode<T>(
@@ -480,6 +507,15 @@ namespace LitJWT
 
             // all ok
             return DecodeResult.Success;
+        }
+
+        public DecodeResult TryDecode<T>(
+            ReadOnlySpan<char> token,
+            PayloadParser<T> payloadParser,
+            TokenValidationParameters<T> validationParameters,
+            out T payloadResult)
+        {
+            throw new NotImplementedException();
         }
 
         // note:ugly copy and paste code...
