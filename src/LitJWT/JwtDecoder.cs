@@ -6,7 +6,14 @@ using System.Text.Json;
 namespace LitJWT
 {
     public delegate T PayloadParser<T>(ReadOnlySpan<byte> payload);
-    public delegate DecodeResult LifetimeValidator<T>(DateTimeOffset? notBefore, DateTimeOffset? expires, T token, TokenValidationParameters<T> parameters);
+
+    public delegate DecodeResult LifetimeValidator<T>(
+        DateTimeOffset? notBefore,
+        DateTimeOffset? expires,
+        T token, 
+        TokenValidationParameters<T> parameters);
+
+    public delegate DateTimeOffset GetCurrentDateTime();
 
     public enum DecodeResult
     {
@@ -27,6 +34,7 @@ namespace LitJWT
         public bool ValidateLifetime { get; set; } = true;
         public TimeSpan ClockSkew { get; set; } = DefaultClockSkew;
         public LifetimeValidator<T>? LifetimeValidator { get; set; } = null;
+        public GetCurrentDateTime? Now { get; set; } = () => DateTimeOffset.UtcNow;
 
         public static readonly TimeSpan DefaultClockSkew = TimeSpan.FromMinutes(5);
     }
@@ -610,7 +618,7 @@ namespace LitJWT
                     validationParameters);
             }
 
-            DateTimeOffset now = DateTimeOffset.UtcNow;
+            DateTimeOffset now = validationParameters.Now?.Invoke() ?? DateTimeOffset.UtcNow;
             if (notBeforeDateTimeOffset.HasValue)
             {
                 TimeSpan diff = now - notBeforeDateTimeOffset.Value;
