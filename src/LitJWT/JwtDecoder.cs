@@ -520,7 +520,10 @@ namespace LitJWT
 
         // note:ugly copy and paste code...
         DecodeResult TryDecodeCore<T>(
-            ReadOnlySpan<byte> utf8token, InternalPayloadParser<T> payloadParser, out T payloadResult)
+            ReadOnlySpan<byte> utf8token,
+            InternalPayloadParser<T> payloadParser,
+            TokenValidationParameters<T> validationParameters,
+            out T payloadResult)
         {
             Split(
                 utf8token,
@@ -618,22 +621,12 @@ namespace LitJWT
                     ArrayPool<byte>.Shared.Return(rentBytes);
                 }
             }
-            if (expiry != null)
-            {
-                var expireTime = DateTimeOffset.FromUnixTimeSeconds(expiry.Value);
-                if (expireTime - DateTimeOffset.UtcNow < TimeSpan.Zero)
-                {
-                    return DecodeResult.FailedVerifyExpire;
-                }
-            }
-            if (notBefore != null)
-            {
-                var notBeforeTime = DateTimeOffset.FromUnixTimeSeconds(notBefore.Value);
-                if (DateTimeOffset.UtcNow - notBeforeTime < TimeSpan.Zero)
-                {
-                    return DecodeResult.FailedVerifyNotBefore;
-                }
-            }
+
+            DecodeResult lifetimeValidationResult = ValidateTokenLifetime(
+                notBefore, expiry, validationParameters, payloadResult);
+
+            if (lifetimeValidationResult != DecodeResult.Success)
+                return lifetimeValidationResult;
 
             // parsing signature.
             {
