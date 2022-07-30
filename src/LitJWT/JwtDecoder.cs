@@ -208,7 +208,7 @@ namespace LitJWT
 
                     try
                     {
-                        var reader = new System.Text.Json.Utf8JsonReader(bytes.Slice(0, bytesWritten));
+                        var reader = new Utf8JsonReader(bytes.Slice(0, bytesWritten));
                         while (reader.Read())
                         {
                             if (reader.TokenType == JsonTokenType.EndObject) break;
@@ -246,10 +246,10 @@ namespace LitJWT
                     var decodedPayload = bytes.Slice(0, bytesWritten);
                     try
                     {
-                        var reader = new System.Text.Json.Utf8JsonReader(decodedPayload);
+                        var reader = new Utf8JsonReader(decodedPayload);
                         while (reader.Read())
                         {
-                            if (reader.TokenType == System.Text.Json.JsonTokenType.EndObject) break;
+                            if (reader.TokenType == JsonTokenType.EndObject) break;
 
                             if (reader.TokenType == JsonTokenType.PropertyName)
                             {
@@ -368,10 +368,10 @@ namespace LitJWT
                 var decodedPayload = bytes.Slice(0, bytesWritten);
                 try
                 {
-                    var reader = new System.Text.Json.Utf8JsonReader(decodedPayload);
+                    var reader = new Utf8JsonReader(decodedPayload);
                     while (reader.Read())
                     {
-                        if (reader.TokenType == System.Text.Json.JsonTokenType.EndObject) break;
+                        if (reader.TokenType == JsonTokenType.EndObject) break;
 
                         // try to read algorithm span.
                         if (reader.TokenType == JsonTokenType.PropertyName)
@@ -413,10 +413,10 @@ namespace LitJWT
 
                     try
                     {
-                        var reader = new System.Text.Json.Utf8JsonReader(decodedPayload);
+                        var reader = new Utf8JsonReader(decodedPayload);
                         while (reader.Read())
                         {
-                            if (reader.TokenType == System.Text.Json.JsonTokenType.EndObject) break;
+                            if (reader.TokenType == JsonTokenType.EndObject) break;
 
                             if (reader.TokenType == JsonTokenType.PropertyName)
                             {
@@ -549,7 +549,7 @@ namespace LitJWT
 
                     try
                     {
-                        var reader = new System.Text.Json.Utf8JsonReader(bytes.Slice(0, bytesWritten));
+                        var reader = new Utf8JsonReader(bytes.Slice(0, bytesWritten));
                         while (reader.Read())
                         {
                             if (reader.TokenType == JsonTokenType.EndObject) break;
@@ -587,10 +587,10 @@ namespace LitJWT
                     var decodedPayload = bytes.Slice(0, bytesWritten);
                     try
                     {
-                        var reader = new System.Text.Json.Utf8JsonReader(decodedPayload);
+                        var reader = new Utf8JsonReader(decodedPayload);
                         while (reader.Read())
                         {
-                            if (reader.TokenType == System.Text.Json.JsonTokenType.EndObject) break;
+                            if (reader.TokenType == JsonTokenType.EndObject) break;
 
                             if (reader.TokenType == JsonTokenType.PropertyName)
                             {
@@ -679,10 +679,10 @@ namespace LitJWT
                 var decodedPayload = bytes.Slice(0, bytesWritten);
                 try
                 {
-                    var reader = new System.Text.Json.Utf8JsonReader(decodedPayload);
+                    var reader = new Utf8JsonReader(decodedPayload);
                     while (reader.Read())
                     {
-                        if (reader.TokenType == System.Text.Json.JsonTokenType.EndObject) break;
+                        if (reader.TokenType == JsonTokenType.EndObject) break;
 
                         // try to read algorithm span.
                         if (reader.TokenType == JsonTokenType.PropertyName)
@@ -724,10 +724,10 @@ namespace LitJWT
 
                     try
                     {
-                        var reader = new System.Text.Json.Utf8JsonReader(decodedPayload);
+                        var reader = new Utf8JsonReader(decodedPayload);
                         while (reader.Read())
                         {
-                            if (reader.TokenType == System.Text.Json.JsonTokenType.EndObject) break;
+                            if (reader.TokenType == JsonTokenType.EndObject) break;
 
                             if (reader.TokenType == JsonTokenType.PropertyName)
                             {
