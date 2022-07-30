@@ -170,24 +170,73 @@ namespace LitJWT
         }
 
         public DecodeResult TryDecode<T>(ReadOnlySpan<byte> utf8token, out T payloadResult)
-            => TryDecodeCore(utf8token, static (x, options) => JsonSerializer.Deserialize<T>(x, options), out payloadResult);
-        
-        public DecodeResult TryDecode<T>(ReadOnlySpan<byte> utf8token, TokenValidationParameters<T> validationParameters, out T payloadResult)
-            => throw new NotImplementedException();
+            => TryDecodeCore(
+                utf8token,
+                static (x, options) => JsonSerializer.Deserialize<T>(x, options),
+                null,
+                out payloadResult);
+
+        public DecodeResult TryDecode<T>(
+            ReadOnlySpan<byte> utf8token,
+            TokenValidationParameters<T> validationParameters,
+            out T payloadResult)
+        {
+            if (validationParameters == null)
+                throw new ArgumentNullException(nameof(validationParameters));
+
+            return TryDecodeCore(
+                utf8token,
+                static (x, options) => JsonSerializer.Deserialize<T>(x, options),
+                validationParameters,
+                out payloadResult);
+        }
 
         public DecodeResult TryDecode<T>(string token, out T payloadResult)
-            => TryDecodeCore(token.AsSpan(), static (x, options) => JsonSerializer.Deserialize<T>(x, options), out payloadResult);
+            => TryDecodeCore(
+                token.AsSpan(),
+                static (x, options) => JsonSerializer.Deserialize<T>(x, options),
+                null,
+                out payloadResult);
 
-        public DecodeResult TryDecode<T>(string token, TokenValidationParameters<T> validationParameters, out T payloadResult)
-            => throw new NotImplementedException();
+        public DecodeResult TryDecode<T>(
+            string token, TokenValidationParameters<T> validationParameters, out T payloadResult)
+        {
+            if (validationParameters == null)
+                throw new ArgumentNullException(nameof(validationParameters));
+
+            return TryDecodeCore(
+                token.AsSpan(),
+                static (x, options) => JsonSerializer.Deserialize<T>(x, options),
+                null,
+                out payloadResult);
+        }
 
         public DecodeResult TryDecode<T>(ReadOnlySpan<char> token, out T payloadResult)
-            => TryDecodeCore(token, static (x, options) => JsonSerializer.Deserialize<T>(x, options), out payloadResult);
-        
-        public DecodeResult TryDecode<T>(ReadOnlySpan<char> token, TokenValidationParameters<T> validationParameters, out T payloadResult)
-            => throw new NotImplementedException();
+            => TryDecodeCore(
+                token,
+                static (x, options) => JsonSerializer.Deserialize<T>(x, options),
+                null,
+                out payloadResult);
 
-        public DecodeResult TryDecode<T>(ReadOnlySpan<byte> utf8token, PayloadParser<T> payloadParser, out T payloadResult)
+        public DecodeResult TryDecode<T>(
+            ReadOnlySpan<char> token,
+            TokenValidationParameters<T> validationParameters,
+            out T payloadResult)
+        {
+            if (validationParameters == null)
+                throw new ArgumentNullException(nameof(validationParameters));
+
+            return TryDecodeCore(
+                token,
+                static (x, options) => JsonSerializer.Deserialize<T>(x, options),
+                validationParameters,
+                out payloadResult);
+        }
+
+        public DecodeResult TryDecode<T>(
+            ReadOnlySpan<byte> utf8token,
+            PayloadParser<T> payloadParser,
+            out T payloadResult)
         {
             Split(utf8token, out var header, out var payload, out var headerAndPayload, out var signature);
 
@@ -522,7 +571,7 @@ namespace LitJWT
         DecodeResult TryDecodeCore<T>(
             ReadOnlySpan<byte> utf8token,
             InternalPayloadParser<T> payloadParser,
-            TokenValidationParameters<T> validationParameters,
+            TokenValidationParameters<T>? validationParameters,
             out T payloadResult)
         {
             Split(
@@ -655,7 +704,7 @@ namespace LitJWT
         DecodeResult TryDecodeCore<T>(
             ReadOnlySpan<char> token,
             InternalPayloadParser<T> payloadParser,
-            TokenValidationParameters<T> validationParameters,
+            TokenValidationParameters<T>? validationParameters,
             out T payloadResult)
         {
             Split(
