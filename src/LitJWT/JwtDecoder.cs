@@ -7,7 +7,6 @@ namespace LitJWT
 {
     public delegate T PayloadParser<T>(ReadOnlySpan<byte> payload);
     public delegate DecodeResult LifetimeValidator<T>(DateTimeOffset? notBefore, DateTimeOffset? expires, T token, TokenValidationParameters<T> parameters);
-    internal delegate T InternalPayloadParser<T>(ReadOnlySpan<byte> payload, JsonSerializerOptions serializerOptions);
 
     public enum DecodeResult
     {
@@ -57,6 +56,9 @@ namespace LitJWT
             this.resolver = resolver;
             this.serializerOptions = serializerOptions;
         }
+
+        T? InternalPayloadParser<T>(ReadOnlySpan<byte> payload) =>
+            JsonSerializer.Deserialize<T>(payload, serializerOptions);
 
         static void Split(
             ReadOnlySpan<char> text,
@@ -172,7 +174,7 @@ namespace LitJWT
         public DecodeResult TryDecode<T>(ReadOnlySpan<byte> utf8token, out T payloadResult)
             => TryDecodeCore(
                 utf8token,
-                static (x, options) => JsonSerializer.Deserialize<T>(x, options),
+                InternalPayloadParser<T>,
                 null,
                 out payloadResult);
 
@@ -186,7 +188,7 @@ namespace LitJWT
 
             return TryDecodeCore(
                 utf8token,
-                static (x, options) => JsonSerializer.Deserialize<T>(x, options),
+                InternalPayloadParser<T>,
                 validationParameters,
                 out payloadResult);
         }
@@ -194,7 +196,7 @@ namespace LitJWT
         public DecodeResult TryDecode<T>(string token, out T payloadResult)
             => TryDecodeCore(
                 token.AsSpan(),
-                static (x, options) => JsonSerializer.Deserialize<T>(x, options),
+                InternalPayloadParser<T>,
                 null,
                 out payloadResult);
 
@@ -206,7 +208,7 @@ namespace LitJWT
 
             return TryDecodeCore(
                 token.AsSpan(),
-                static (x, options) => JsonSerializer.Deserialize<T>(x, options),
+                InternalPayloadParser<T>,
                 null,
                 out payloadResult);
         }
@@ -214,7 +216,7 @@ namespace LitJWT
         public DecodeResult TryDecode<T>(ReadOnlySpan<char> token, out T payloadResult)
             => TryDecodeCore(
                 token,
-                static (x, options) => JsonSerializer.Deserialize<T>(x, options),
+                InternalPayloadParser<T>,
                 null,
                 out payloadResult);
 
@@ -228,7 +230,7 @@ namespace LitJWT
 
             return TryDecodeCore(
                 token,
-                static (x, options) => JsonSerializer.Deserialize<T>(x, options),
+                InternalPayloadParser<T>,
                 validationParameters,
                 out payloadResult);
         }
@@ -570,7 +572,7 @@ namespace LitJWT
         // note:ugly copy and paste code...
         DecodeResult TryDecodeCore<T>(
             ReadOnlySpan<byte> utf8token,
-            InternalPayloadParser<T> payloadParser,
+            PayloadParser<T> payloadParser,
             TokenValidationParameters<T>? validationParameters,
             out T payloadResult)
         {
@@ -663,7 +665,7 @@ namespace LitJWT
                     }
 
                     // and custom deserialize.
-                    payloadResult = payloadParser(decodedPayload, serializerOptions);
+                    payloadResult = payloadParser(decodedPayload);
                 }
                 finally
                 {
@@ -703,7 +705,7 @@ namespace LitJWT
 
         DecodeResult TryDecodeCore<T>(
             ReadOnlySpan<char> token,
-            InternalPayloadParser<T> payloadParser,
+            PayloadParser<T> payloadParser,
             TokenValidationParameters<T>? validationParameters,
             out T payloadResult)
         {
@@ -808,7 +810,7 @@ namespace LitJWT
                     }
 
                     // and custom deserialize.
-                    payloadResult = payloadParser(decodedPayload, serializerOptions);
+                    payloadResult = payloadParser(decodedPayload);
                 }
                 finally
                 {
