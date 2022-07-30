@@ -136,9 +136,38 @@ namespace LitJWT.Tests
                     ValidateLifetime = validateLifetime,
                     ClockSkew = TimeSpan.FromSeconds(clockSkewInSeconds)
                 };
-                
+
                 var decodeResult = decoder.TryDecode(result, x => JsonConvert.DeserializeObject<Payload>(Encoding.UTF8.GetString(x)), tvp, out var decodedPayload);
                 decodeResult.Should().Be(expectedResult);
+            }
+        }
+
+        [Theory]
+        [InlineData(DecodeResult.Success)]
+        [InlineData(DecodeResult.FailedVerifyExpire)]
+        public void VerifyExpWithLifetimeValidator(DecodeResult lifetimeValidatorResult)
+        {
+            var key = LitJWT.Algorithms.HS256Algorithm.GenerateRandomRecommendedKey();
+            var encoder = new JwtEncoder(new LitJWT.Algorithms.HS256Algorithm(key));
+            var decoder = new JwtDecoder(new LitJWT.Algorithms.HS256Algorithm(key));
+
+            {
+                DateTimeOffset exp = DateTimeOffset.UtcNow;
+                var payload = new PayloadExp { Bar = 1, Foo = "foo", exp = exp.ToUnixTimeSeconds() };
+                var result = encoder.Encode(payload, null, (x, writer) => writer.Write(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(x))));
+
+                var tvp = new TokenValidationParameters<Payload>()
+                {
+                    LifetimeValidator = (before, expires, token, parameters) =>
+                    {
+                        expires.Should().BeCloseTo(exp, TimeSpan.FromSeconds(1));
+                        token.Should().NotBeNull();
+                        return lifetimeValidatorResult;
+                    }
+                };
+
+                var decodeResult = decoder.TryDecode(result, x => JsonConvert.DeserializeObject<Payload>(Encoding.UTF8.GetString(x)), tvp, out var decodedPayload);
+                decodeResult.Should().Be(lifetimeValidatorResult);
             }
         }
 
@@ -162,9 +191,7 @@ namespace LitJWT.Tests
                 var payload = new PayloadNbf { Bar = 1, Foo = "foo", nbf = (DateTimeOffset.UtcNow - TimeSpan.FromSeconds(10)).ToUnixTimeSeconds() };
                 var result = encoder.Encode(payload, null, (x, writer) => writer.Write(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(x))));
 
-
                 var decodeResult = decoder.TryDecode(result, x => JsonConvert.DeserializeObject<Payload>(Encoding.UTF8.GetString(x)), out var decodedPayload);
-
                 decodeResult.Should().Be(DecodeResult.Success);
             }
         }
@@ -191,8 +218,36 @@ namespace LitJWT.Tests
                 };
 
                 var decodeResult = decoder.TryDecode(result, x => JsonConvert.DeserializeObject<Payload>(Encoding.UTF8.GetString(x)), tvp, out var decodedPayload);
-
                 decodeResult.Should().Be(expectedResult);
+            }
+        }
+
+        [Theory]
+        [InlineData(DecodeResult.Success)]
+        [InlineData(DecodeResult.FailedVerifyNotBefore)]
+        public void VerifyNbfWithLifetimeValidator(DecodeResult lifetimeValidatorResult)
+        {
+            var key = LitJWT.Algorithms.HS256Algorithm.GenerateRandomRecommendedKey();
+            var encoder = new JwtEncoder(new LitJWT.Algorithms.HS256Algorithm(key));
+            var decoder = new JwtDecoder(new LitJWT.Algorithms.HS256Algorithm(key));
+
+            {
+                DateTimeOffset notBefore = DateTimeOffset.UtcNow;
+                var payload = new PayloadNbf { Bar = 1, Foo = "foo", nbf = notBefore.ToUnixTimeSeconds() };
+                var result = encoder.Encode(payload, null, (x, writer) => writer.Write(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(x))));
+
+                var tvp = new TokenValidationParameters<Payload>()
+                {
+                    LifetimeValidator = (before, expires, token, parameters) =>
+                    {
+                        before.Should().BeCloseTo(notBefore, TimeSpan.FromSeconds(1));
+                        token.Should().NotBeNull();
+                        return lifetimeValidatorResult;
+                    }
+                };
+
+                var decodeResult = decoder.TryDecode(result, x => JsonConvert.DeserializeObject<Payload>(Encoding.UTF8.GetString(x)), tvp, out var decodedPayload);
+                decodeResult.Should().Be(lifetimeValidatorResult);
             }
         }
 
@@ -305,6 +360,35 @@ namespace LitJWT.Tests
             }
         }
 
+        [Theory]
+        [InlineData(DecodeResult.Success)]
+        [InlineData(DecodeResult.FailedVerifyExpire)]
+        public void VerifyExpUtf8WithLifetimeValidator(DecodeResult lifetimeValidatorResult)
+        {
+            var key = LitJWT.Algorithms.HS256Algorithm.GenerateRandomRecommendedKey();
+            var encoder = new JwtEncoder(new LitJWT.Algorithms.HS256Algorithm(key));
+            var decoder = new JwtDecoder(new LitJWT.Algorithms.HS256Algorithm(key));
+
+            {
+                DateTimeOffset exp = DateTimeOffset.UtcNow;
+                var payload = new PayloadExp { Bar = 1, Foo = "foo", exp = exp.ToUnixTimeSeconds() };
+                var result = encoder.EncodeAsUtf8Bytes(payload, null, (x, writer) => writer.Write(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(x))));
+
+                var tvp = new TokenValidationParameters<Payload>()
+                {
+                    LifetimeValidator = (before, expires, token, parameters) =>
+                    {
+                        expires.Should().BeCloseTo(exp, TimeSpan.FromSeconds(1));
+                        token.Should().NotBeNull();
+                        return lifetimeValidatorResult;
+                    }
+                };
+
+                var decodeResult = decoder.TryDecode(result, x => JsonConvert.DeserializeObject<Payload>(Encoding.UTF8.GetString(x)), tvp, out var decodedPayload);
+                decodeResult.Should().Be(lifetimeValidatorResult);
+            }
+        }
+
         [Fact]
         public void VerifyNbfUtf8()
         {
@@ -327,7 +411,6 @@ namespace LitJWT.Tests
 
 
                 var decodeResult = decoder.TryDecode(result, x => JsonConvert.DeserializeObject<Payload>(Encoding.UTF8.GetString(x)), out var decodedPayload);
-
                 decodeResult.Should().Be(DecodeResult.Success);
             }
         }
@@ -354,8 +437,36 @@ namespace LitJWT.Tests
                 };
 
                 var decodeResult = decoder.TryDecode(result, x => JsonConvert.DeserializeObject<Payload>(Encoding.UTF8.GetString(x)), tvp, out var decodedPayload);
-
                 decodeResult.Should().Be(expectedResult);
+            }
+        }
+
+        [Theory]
+        [InlineData(DecodeResult.Success)]
+        [InlineData(DecodeResult.FailedVerifyExpire)]
+        public void VerifyNbfUtf8WithLifetimeValidator(DecodeResult lifetimeValidatorResult)
+        {
+            var key = LitJWT.Algorithms.HS256Algorithm.GenerateRandomRecommendedKey();
+            var encoder = new JwtEncoder(new LitJWT.Algorithms.HS256Algorithm(key));
+            var decoder = new JwtDecoder(new LitJWT.Algorithms.HS256Algorithm(key));
+
+            {
+                DateTimeOffset nbf = DateTimeOffset.UtcNow;
+                var payload = new PayloadNbf { Bar = 1, Foo = "foo", nbf = nbf.ToUnixTimeSeconds() };
+                var result = encoder.EncodeAsUtf8Bytes(payload, null, (x, writer) => writer.Write(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(x))));
+
+                var tvp = new TokenValidationParameters<Payload>()
+                {
+                    LifetimeValidator = (before, expires, token, parameters) =>
+                    {
+                        before.Should().BeCloseTo(nbf, TimeSpan.FromSeconds(1));
+                        token.Should().NotBeNull();
+                        return lifetimeValidatorResult;
+                    }
+                };
+
+                var decodeResult = decoder.TryDecode(result, x => JsonConvert.DeserializeObject<Payload>(Encoding.UTF8.GetString(x)), tvp, out var decodedPayload);
+                decodeResult.Should().Be(lifetimeValidatorResult);
             }
         }
 
