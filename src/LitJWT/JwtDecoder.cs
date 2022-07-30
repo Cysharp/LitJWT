@@ -171,28 +171,24 @@ namespace LitJWT
             }
         }
 
-        public DecodeResult TryDecode<T>(ReadOnlySpan<byte> utf8token, out T payloadResult)
-        {
-            return TryDecodeCore(utf8token, InternalPayloadParser<T>, null, out payloadResult);
-        }
-
-        public DecodeResult TryDecode<T>(
-            ReadOnlySpan<byte> utf8token,
-            TokenValidationParameters<T> validationParameters,
-            out T payloadResult)
-        {
-            if (validationParameters == null)
-                throw new ArgumentNullException(nameof(validationParameters));
-
-            return TryDecodeCore(
-                utf8token, InternalPayloadParser<T>, validationParameters, out payloadResult);
-        }
-
+        #region "(token, out payloadResult) overloads"
         public DecodeResult TryDecode<T>(string token, out T payloadResult)
         {
             return TryDecodeCore(token.AsSpan(), InternalPayloadParser<T>, null, out payloadResult);
         }
 
+        public DecodeResult TryDecode<T>(ReadOnlySpan<char> token, out T payloadResult)
+        {
+            return TryDecodeCore(token, InternalPayloadParser<T>, null, out payloadResult);
+        }
+
+        public DecodeResult TryDecode<T>(ReadOnlySpan<byte> utf8token, out T payloadResult)
+        {
+            return TryDecodeCore(utf8token, InternalPayloadParser<T>, null, out payloadResult);
+        }
+        #endregion
+
+        #region "(token, validationParameters, payloadResult) overloads"
         public DecodeResult TryDecode<T>(
             string token, TokenValidationParameters<T> validationParameters, out T payloadResult)
         {
@@ -202,12 +198,7 @@ namespace LitJWT
             return TryDecodeCore(
                 token.AsSpan(), InternalPayloadParser<T>, null, out payloadResult);
         }
-
-        public DecodeResult TryDecode<T>(ReadOnlySpan<char> token, out T payloadResult)
-        {
-            return TryDecodeCore(token, InternalPayloadParser<T>, null, out payloadResult);
-        }
-
+        
         public DecodeResult TryDecode<T>(
             ReadOnlySpan<char> token,
             TokenValidationParameters<T> validationParameters,
@@ -222,12 +213,62 @@ namespace LitJWT
 
         public DecodeResult TryDecode<T>(
             ReadOnlySpan<byte> utf8token,
+            TokenValidationParameters<T> validationParameters,
+            out T payloadResult)
+        {
+            if (validationParameters == null)
+                throw new ArgumentNullException(nameof(validationParameters));
+
+            return TryDecodeCore(
+                utf8token, InternalPayloadParser<T>, validationParameters, out payloadResult);
+        }
+        #endregion
+
+        #region "(token, payloadParser, payloadResult) overloads"
+        public DecodeResult TryDecode<T>(
+            string token, PayloadParser<T> payloadParser, out T payloadResult)
+        {
+            return TryDecode(token.AsSpan(), payloadParser, out payloadResult);
+        }
+
+        public DecodeResult TryDecode<T>(
+            ReadOnlySpan<char> token, PayloadParser<T> payloadParser, out T payloadResult)
+        {
+            return TryDecodeCore(token, payloadParser, null, out payloadResult);
+        }
+
+        public DecodeResult TryDecode<T>(
+            ReadOnlySpan<byte> utf8token,
             PayloadParser<T> payloadParser,
             out T payloadResult)
         {
             return TryDecodeCore(utf8token, payloadParser, null, out payloadResult);
         }
+        #endregion
 
+        #region "(token, payloadParser, validationParameters, payloadResult) overloads"
+        public DecodeResult TryDecode<T>(
+            string token,
+            PayloadParser<T> payloadParser,
+            TokenValidationParameters<T> validationParameters,
+            out T payloadResult)
+        {
+            return TryDecodeCore(
+                token.AsSpan(), payloadParser, validationParameters, out payloadResult);
+        }
+        
+        public DecodeResult TryDecode<T>(
+            ReadOnlySpan<char> token,
+            PayloadParser<T> payloadParser,
+            TokenValidationParameters<T> validationParameters,
+            out T payloadResult)
+        {
+            if (validationParameters == null)
+                throw new ArgumentNullException(nameof(validationParameters));
+
+            return TryDecodeCore(token, payloadParser, validationParameters, out payloadResult);
+        }
+        
         public DecodeResult TryDecode<T>(
             ReadOnlySpan<byte> utf8token,
             PayloadParser<T> payloadParser,
@@ -240,40 +281,7 @@ namespace LitJWT
             return TryDecodeCore(
                 utf8token, payloadParser, validationParameters, out payloadResult);
         }
-
-        public DecodeResult TryDecode<T>(
-            string token, PayloadParser<T> payloadParser, out T payloadResult)
-        {
-            return TryDecode(token.AsSpan(), payloadParser, out payloadResult);
-        }
-
-        public DecodeResult TryDecode<T>(
-            string token,
-            PayloadParser<T> payloadParser,
-            TokenValidationParameters<T> validationParameters,
-            out T payloadResult)
-        {
-            return TryDecodeCore(
-                token.AsSpan(), payloadParser, validationParameters, out payloadResult);
-        }
-
-        public DecodeResult TryDecode<T>(
-            ReadOnlySpan<char> token, PayloadParser<T> payloadParser, out T payloadResult)
-        {
-            return TryDecodeCore(token, payloadParser, null, out payloadResult);
-        }
-
-        public DecodeResult TryDecode<T>(
-            ReadOnlySpan<char> token,
-            PayloadParser<T> payloadParser,
-            TokenValidationParameters<T> validationParameters,
-            out T payloadResult)
-        {
-            if (validationParameters == null)
-                throw new ArgumentNullException(nameof(validationParameters));
-
-            return TryDecodeCore(token, payloadParser, validationParameters, out payloadResult);
-        }
+        #endregion
 
         DecodeResult TryDecodeCore<T>(
             ReadOnlySpan<byte> utf8token,
