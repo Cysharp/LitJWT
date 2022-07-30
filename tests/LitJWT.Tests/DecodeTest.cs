@@ -1,12 +1,12 @@
-﻿using Newtonsoft.Json;
-using System.Linq;
-using FluentAssertions;
-using RandomFixtureKit;
-using System;
+﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
+
+using FluentAssertions;
+using Newtonsoft.Json;
+using RandomFixtureKit;
 using Xunit;
 
 namespace LitJWT.Tests
@@ -18,18 +18,21 @@ namespace LitJWT.Tests
             public string Foo { get; set; }
             public int Bar { get; set; }
         }
+
         public class PayloadNbf
         {
             public string Foo { get; set; }
             public int Bar { get; set; }
             public long nbf { get; set; }
         }
+
         public class PayloadExp
         {
             public string Foo { get; set; }
             public int Bar { get; set; }
             public long exp { get; set; }
         }
+
         [Fact]
         public void StandardDecode()
         {
@@ -113,6 +116,32 @@ namespace LitJWT.Tests
             }
         }
 
+        [Theory]
+        [InlineData(10, 300, true, DecodeResult.Success)]
+        [InlineData(310, 300, true, DecodeResult.FailedVerifyExpire)]
+        [InlineData(10, 300, false, DecodeResult.Success)]
+        [InlineData(310, 300, false, DecodeResult.Success)]
+        public void VerifyExpWithClockSkew(int differenceInSeconds, int clockSkewInSeconds, bool validateLifetime, DecodeResult expectedResult)
+        {
+            var key = LitJWT.Algorithms.HS256Algorithm.GenerateRandomRecommendedKey();
+            var encoder = new JwtEncoder(new LitJWT.Algorithms.HS256Algorithm(key));
+            var decoder = new JwtDecoder(new LitJWT.Algorithms.HS256Algorithm(key));
+
+            {
+                var payload = new PayloadExp { Bar = 1, Foo = "foo", exp = (DateTimeOffset.UtcNow - TimeSpan.FromSeconds(differenceInSeconds)).ToUnixTimeSeconds() };
+                var result = encoder.Encode(payload, null, (x, writer) => writer.Write(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(x))));
+
+                var tvp = new TokenValidationParameters<Payload>()
+                {
+                    ValidateLifetime = validateLifetime,
+                    ClockSkew = TimeSpan.FromSeconds(clockSkewInSeconds)
+                };
+                
+                var decodeResult = decoder.TryDecode(result, x => JsonConvert.DeserializeObject<Payload>(Encoding.UTF8.GetString(x)), tvp, out var decodedPayload);
+                decodeResult.Should().Be(expectedResult);
+            }
+        }
+
         [Fact]
         public void VerifyNbf()
         {
@@ -140,8 +169,32 @@ namespace LitJWT.Tests
             }
         }
 
+        [Theory]
+        [InlineData(10, 300, true, DecodeResult.Success)]
+        [InlineData(310, 300, true, DecodeResult.FailedVerifyNotBefore)]
+        [InlineData(10, 300, false, DecodeResult.Success)]
+        [InlineData(310, 300, false, DecodeResult.Success)]
+        public void VerifyNbfWithClockSkew(int differenceInSeconds, int clockSkewInSeconds, bool validateLifetime, DecodeResult expectedResult)
+        {
+            var key = LitJWT.Algorithms.HS256Algorithm.GenerateRandomRecommendedKey();
+            var encoder = new JwtEncoder(new LitJWT.Algorithms.HS256Algorithm(key));
+            var decoder = new JwtDecoder(new LitJWT.Algorithms.HS256Algorithm(key));
 
+            {
+                var payload = new PayloadNbf { Bar = 1, Foo = "foo", nbf = (DateTimeOffset.UtcNow + TimeSpan.FromSeconds(differenceInSeconds)).ToUnixTimeSeconds() };
+                var result = encoder.Encode(payload, null, (x, writer) => writer.Write(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(x))));
 
+                var tvp = new TokenValidationParameters<Payload>()
+                {
+                    ValidateLifetime =validateLifetime,
+                    ClockSkew = TimeSpan.FromSeconds(clockSkewInSeconds)
+                };
+
+                var decodeResult = decoder.TryDecode(result, x => JsonConvert.DeserializeObject<Payload>(Encoding.UTF8.GetString(x)), tvp, out var decodedPayload);
+
+                decodeResult.Should().Be(expectedResult);
+            }
+        }
 
         [Fact]
         public void StandardDecodeUtf8()
@@ -226,6 +279,32 @@ namespace LitJWT.Tests
             }
         }
 
+        [Theory]
+        [InlineData(10, 300, true, DecodeResult.Success)]
+        [InlineData(310, 300, true, DecodeResult.FailedVerifyExpire)]
+        [InlineData(10, 300, false, DecodeResult.Success)]
+        [InlineData(310, 300, false, DecodeResult.Success)]
+        public void VerifyExpUtf8WithClockSkew(int differenceInSeconds, int clockSkewInSeconds, bool validateLifetime, DecodeResult expectedResult)
+        {
+            var key = LitJWT.Algorithms.HS256Algorithm.GenerateRandomRecommendedKey();
+            var encoder = new JwtEncoder(new LitJWT.Algorithms.HS256Algorithm(key));
+            var decoder = new JwtDecoder(new LitJWT.Algorithms.HS256Algorithm(key));
+
+            {
+                var payload = new PayloadExp { Bar = 1, Foo = "foo", exp = (DateTimeOffset.UtcNow - TimeSpan.FromSeconds(differenceInSeconds)).ToUnixTimeSeconds() };
+                var result = encoder.EncodeAsUtf8Bytes(payload, null, (x, writer) => writer.Write(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(x))));
+
+                var tvp = new TokenValidationParameters<Payload>()
+                {
+                    ValidateLifetime = validateLifetime,
+                    ClockSkew = TimeSpan.FromSeconds(clockSkewInSeconds)
+                };
+                
+                var decodeResult = decoder.TryDecode(result, x => JsonConvert.DeserializeObject<Payload>(Encoding.UTF8.GetString(x)), tvp, out var decodedPayload);
+                decodeResult.Should().Be(expectedResult);
+            }
+        }
+
         [Fact]
         public void VerifyNbfUtf8()
         {
@@ -250,6 +329,33 @@ namespace LitJWT.Tests
                 var decodeResult = decoder.TryDecode(result, x => JsonConvert.DeserializeObject<Payload>(Encoding.UTF8.GetString(x)), out var decodedPayload);
 
                 decodeResult.Should().Be(DecodeResult.Success);
+            }
+        }
+
+        [Theory]
+        [InlineData(10, 300, true, DecodeResult.Success)]
+        [InlineData(310, 300, true, DecodeResult.FailedVerifyNotBefore)]
+        [InlineData(10, 300, false, DecodeResult.Success)]
+        [InlineData(310, 300, false, DecodeResult.Success)]
+        public void VerifyNbfUtf8WithClockSkew(int differenceInSeconds, int clockSkewInSeconds, bool validateLifetime, DecodeResult expectedResult)
+        {
+            var key = LitJWT.Algorithms.HS256Algorithm.GenerateRandomRecommendedKey();
+            var encoder = new JwtEncoder(new LitJWT.Algorithms.HS256Algorithm(key));
+            var decoder = new JwtDecoder(new LitJWT.Algorithms.HS256Algorithm(key));
+
+            {
+                var payload = new PayloadNbf { Bar = 1, Foo = "foo", nbf = (DateTimeOffset.UtcNow + TimeSpan.FromSeconds(differenceInSeconds)).ToUnixTimeSeconds() };
+                var result = encoder.EncodeAsUtf8Bytes(payload, null, (x, writer) => writer.Write(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(x))));
+
+                var tvp = new TokenValidationParameters<Payload>()
+                {
+                    ValidateLifetime = validateLifetime,
+                    ClockSkew = TimeSpan.FromSeconds(clockSkewInSeconds)
+                };
+
+                var decodeResult = decoder.TryDecode(result, x => JsonConvert.DeserializeObject<Payload>(Encoding.UTF8.GetString(x)), tvp, out var decodedPayload);
+
+                decodeResult.Should().Be(expectedResult);
             }
         }
 
