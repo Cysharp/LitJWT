@@ -236,20 +236,27 @@ namespace LitJWT
         public DecodeResult TryDecode<T>(
             string token, PayloadParser<T> payloadParser, out T payloadResult)
         {
-            return TryDecode(token.AsSpan(), payloadParser, out payloadResult);
+            if (payloadParser == null)
+                throw new ArgumentNullException(nameof(payloadParser));
+
+            return TryDecodeCore(token.AsSpan(), payloadParser, null, out payloadResult);
         }
 
         public DecodeResult TryDecode<T>(
             ReadOnlySpan<char> token, PayloadParser<T> payloadParser, out T payloadResult)
         {
+            if (payloadParser == null)
+                throw new ArgumentNullException(nameof(payloadParser));
+
             return TryDecodeCore(token, payloadParser, null, out payloadResult);
         }
 
         public DecodeResult TryDecode<T>(
-            ReadOnlySpan<byte> utf8token,
-            PayloadParser<T> payloadParser,
-            out T payloadResult)
+            ReadOnlySpan<byte> utf8token, PayloadParser<T> payloadParser, out T payloadResult)
         {
+            if (payloadParser == null)
+                throw new ArgumentNullException(nameof(payloadParser));
+
             return TryDecodeCore(utf8token, payloadParser, null, out payloadResult);
         }
         #endregion
@@ -261,6 +268,12 @@ namespace LitJWT
             TokenValidationParameters<T> validationParameters,
             out T payloadResult)
         {
+            if (payloadParser == null)
+                throw new ArgumentNullException(nameof(payloadParser));
+
+            if (validationParameters == null)
+                throw new ArgumentNullException(nameof(validationParameters));
+
             return TryDecodeCore(
                 token.AsSpan(), payloadParser, validationParameters, out payloadResult);
         }
@@ -271,6 +284,9 @@ namespace LitJWT
             TokenValidationParameters<T> validationParameters,
             out T payloadResult)
         {
+            if (payloadParser == null)
+                throw new ArgumentNullException(nameof(payloadParser));
+
             if (validationParameters == null)
                 throw new ArgumentNullException(nameof(validationParameters));
 
@@ -283,6 +299,9 @@ namespace LitJWT
             TokenValidationParameters<T> validationParameters,
             out T payloadResult)
         {
+            if (payloadParser == null)
+                throw new ArgumentNullException(nameof(payloadParser));
+
             if (validationParameters == null)
                 throw new ArgumentNullException(nameof(validationParameters));
 
