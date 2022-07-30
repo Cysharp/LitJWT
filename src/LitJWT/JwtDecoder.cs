@@ -605,22 +605,22 @@ namespace LitJWT
             TokenValidationParameters<T>? validationParameters,
             T payloadResult)
         {
-            if (validationParameters is not null
+            if (validationParameters != null
                 && !validationParameters.ValidateLifetime
-                && validationParameters.LifetimeValidator is null)
+                && validationParameters.LifetimeValidator == null)
             {
                 return DecodeResult.Success;
             }
 
-            DateTimeOffset? notBeforeDateTimeOffset = notBeforeUnixEpoch is null
+            DateTimeOffset? notBeforeDateTimeOffset = notBeforeUnixEpoch == null
                 ? null
                 : DateTimeOffset.FromUnixTimeSeconds(notBeforeUnixEpoch.Value);
 
-            DateTimeOffset? expiryDateTimeOffset = expiryUnixEpoch is null
+            DateTimeOffset? expiryDateTimeOffset = expiryUnixEpoch == null
                 ? null
                 : DateTimeOffset.FromUnixTimeSeconds(expiryUnixEpoch.Value);
 
-            if (validationParameters is null)
+            if (validationParameters == null)
             {
                 return DefaultLifetimeValidation(
                     notBeforeDateTimeOffset,
@@ -628,7 +628,7 @@ namespace LitJWT
                     DateTimeOffset.UtcNow);
             }
 
-            if (validationParameters.LifetimeValidator is not null)
+            if (validationParameters.LifetimeValidator != null)
             {
                 return validationParameters.LifetimeValidator(
                     notBeforeDateTimeOffset,
