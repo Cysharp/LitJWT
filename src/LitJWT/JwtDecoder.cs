@@ -240,136 +240,7 @@ namespace LitJWT
             PayloadParser<T> payloadParser,
             out T payloadResult)
         {
-            Split(utf8token, out var header, out var payload, out var headerAndPayload, out var signature);
-
-            IJwtAlgorithm algorithm = null;
-
-            // parsing header.
-            {
-                // first, try quick match
-                algorithm = resolver.ResolveFromBase64Header(header);
-                if (algorithm == null)
-                {
-                    Span<byte> bytes = stackalloc byte[Base64.GetMaxBase64UrlDecodeLength(header.Length)];
-                    if (!Base64.TryFromBase64UrlUtf8(header, bytes, out var bytesWritten))
-                    {
-                        payloadResult = default;
-                        return DecodeResult.InvalidBase64UrlHeader;
-                    }
-
-                    try
-                    {
-                        var reader = new Utf8JsonReader(bytes.Slice(0, bytesWritten));
-                        while (reader.Read())
-                        {
-                            if (reader.TokenType == JsonTokenType.EndObject) break;
-
-                            // try to read algorithm span.
-                            if (reader.TokenType == JsonTokenType.PropertyName && reader.ValueTextEquals(JwtConstantsUtf8.Algorithm))
-                            {
-                                reader.Read();
-                                algorithm = resolver.Resolve(reader.ValueSpan);
-                            }
-                        }
-                    }
-                    catch (JsonException)
-                    {
-                        payloadResult = default;
-                        return DecodeResult.InvalidHeaderFormat;
-                    }
-                }
-            }
-
-            // parsing payload.
-            long? expiry = null;
-            long? notBefore = null;
-            {
-                var rentBytes = ArrayPool<byte>.Shared.Rent(Base64.GetMaxBase64UrlDecodeLength(payload.Length));
-                try
-                {
-                    Span<byte> bytes = rentBytes.AsSpan();
-                    if (!Base64.TryFromBase64UrlUtf8(payload, bytes, out var bytesWritten))
-                    {
-                        payloadResult = default;
-                        return DecodeResult.InvalidBase64UrlPayload;
-                    }
-
-                    var decodedPayload = bytes.Slice(0, bytesWritten);
-                    try
-                    {
-                        var reader = new Utf8JsonReader(decodedPayload);
-                        while (reader.Read())
-                        {
-                            if (reader.TokenType == JsonTokenType.EndObject) break;
-
-                            if (reader.TokenType == JsonTokenType.PropertyName)
-                            {
-                                if (reader.ValueTextEquals(JwtConstantsUtf8.Expiration))
-                                {
-                                    reader.Read();
-                                    expiry = reader.GetInt64();
-                                }
-                                else if (reader.ValueTextEquals(JwtConstantsUtf8.NotBefore))
-                                {
-                                    reader.Read();
-                                    notBefore = reader.GetInt64();
-                                }
-                            }
-                        }
-                    }
-                    catch (JsonException)
-                    {
-                        payloadResult = default;
-                        return DecodeResult.InvalidPayloadFormat;
-                    }
-
-                    // and custom deserialize.
-                    payloadResult = payloadParser(decodedPayload);
-                }
-                finally
-                {
-                    ArrayPool<byte>.Shared.Return(rentBytes);
-                }
-            }
-            if (expiry != null)
-            {
-                var expireTime = DateTimeOffset.FromUnixTimeSeconds(expiry.Value);
-                if (expireTime - DateTimeOffset.UtcNow < TimeSpan.Zero)
-                {
-                    return DecodeResult.FailedVerifyExpire;
-                }
-            }
-            if (notBefore != null)
-            {
-                var notBeforeTime = DateTimeOffset.FromUnixTimeSeconds(notBefore.Value);
-                if (DateTimeOffset.UtcNow - notBeforeTime < TimeSpan.Zero)
-                {
-                    return DecodeResult.FailedVerifyNotBefore;
-                }
-            }
-
-            // parsing signature.
-            {
-                if (algorithm == null)
-                {
-                    return DecodeResult.AlgorithmNotExists;
-                }
-
-                Span<byte> signatureDecoded = stackalloc byte[Base64.GetMaxBase64UrlDecodeLength(signature.Length)];
-                if (!Base64.TryFromBase64UrlUtf8(signature, signatureDecoded, out var bytesWritten))
-                {
-                    return DecodeResult.InvalidBase64UrlSignature;
-                }
-                signatureDecoded = signatureDecoded.Slice(0, bytesWritten);
-
-                if (!algorithm.Verify(headerAndPayload, signatureDecoded))
-                {
-                    return DecodeResult.FailedVerifySignature;
-                }
-            }
-
-            // all ok
-            return DecodeResult.Success;
+            return TryDecodeCore(utf8token, payloadParser, null, out payloadResult);
         }
 
         public DecodeResult TryDecode<T>(
@@ -378,7 +249,10 @@ namespace LitJWT
             TokenValidationParameters<T> validationParameters,
             out T payloadResult)
         {
-            throw new NotImplementedException();
+            if (validationParameters == null)
+                throw new ArgumentNullException(nameof(validationParameters));
+
+            return TryDecodeCore(utf8token, payloadParser, validationParameters, out payloadResult);
         }
 
         public DecodeResult TryDecode<T>(string token, PayloadParser<T> payloadParser, out T payloadResult)
