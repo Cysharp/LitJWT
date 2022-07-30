@@ -860,11 +860,15 @@ namespace LitJWT
         static DecodeResult ValidateTokenLifetime<T>(
             long? notBeforeUnixEpoch,
             long? expiryUnixEpoch,
-            TokenValidationParameters<T> validationParameters,
+            TokenValidationParameters<T>? validationParameters,
             T payloadResult)
         {
-            if (!validationParameters.ValidateLifetime && validationParameters.LifetimeValidator is null)
+            if (validationParameters is not null
+                && !validationParameters.ValidateLifetime
+                && validationParameters.LifetimeValidator is null)
+            {
                 return DecodeResult.Success;
+            }
 
             DateTimeOffset? notBeforeDateTimeOffset = notBeforeUnixEpoch is null
                 ? null
@@ -874,6 +878,14 @@ namespace LitJWT
                 ? null
                 : DateTimeOffset.FromUnixTimeSeconds(expiryUnixEpoch.Value);
 
+            if (validationParameters is null)
+            {
+                return DefaultLifetimeValidation(
+                    notBeforeDateTimeOffset,
+                    expiryDateTimeOffset,
+                    DateTimeOffset.UtcNow);
+            }
+
             if (validationParameters.LifetimeValidator is not null)
             {
                 return validationParameters.LifetimeValidator(
@@ -882,7 +894,7 @@ namespace LitJWT
                     payloadResult,
                     validationParameters);
             }
-            
+
             DateTimeOffset now = DateTimeOffset.UtcNow;
             if (notBeforeDateTimeOffset.HasValue)
             {
@@ -895,6 +907,28 @@ namespace LitJWT
             {
                 TimeSpan diff = expiryDateTimeOffset.Value - now;
                 if (diff.Duration() > validationParameters.ClockSkew)
+                    return DecodeResult.FailedVerifyExpire;
+            }
+
+            return DecodeResult.Success;
+        }
+
+        static DecodeResult DefaultLifetimeValidation(
+            DateTimeOffset? notBefore,
+            DateTimeOffset? expiry,
+            DateTimeOffset utcNow)
+        {
+            if (notBefore.HasValue)
+            {
+                TimeSpan diff = utcNow - notBefore.Value;
+                if (diff < TimeSpan.Zero)
+                    return DecodeResult.FailedVerifyNotBefore;
+            }
+
+            if (expiry.HasValue)
+            {
+                TimeSpan diff = expiry.Value - utcNow;
+                if (diff < TimeSpan.Zero)
                     return DecodeResult.FailedVerifyExpire;
             }
 
