@@ -9,6 +9,7 @@
 		<GenerateAssemblyInfo>true</GenerateAssemblyInfo>
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 		<AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+		<Nullable>Enable</Nullable>
 		<NoWarn>1701;1702;1705;1591</NoWarn>
 		<Company>Cysharp</Company>
 
