@@ -323,124 +323,113 @@ namespace LitJWT
                 out var headerAndPayload,
                 out var signature);
 
+            int bytesWritten = 0;
             IJwtAlgorithm algorithm = null;
 
-            // parsing header.
+            // first, try quick match
+            algorithm = resolver.ResolveFromBase64Header(header);
+            if (algorithm == null)
             {
-                // first, try quick match
-                algorithm = resolver.ResolveFromBase64Header(header);
-                if (algorithm == null)
+                Span<byte> bytes = stackalloc byte[Base64.GetMaxBase64UrlDecodeLength(header.Length)];
+                if (!Base64.TryFromBase64UrlUtf8(header, bytes, out bytesWritten))
                 {
-                    Span<byte> bytes = stackalloc byte[Base64.GetMaxBase64UrlDecodeLength(header.Length)];
-                    if (!Base64.TryFromBase64UrlUtf8(header, bytes, out var bytesWritten))
-                    {
-                        payloadResult = default;
-                        return DecodeResult.InvalidBase64UrlHeader;
-                    }
-
-                    try
-                    {
-                        var reader = new Utf8JsonReader(bytes.Slice(0, bytesWritten));
-                        while (reader.Read())
-                        {
-                            if (reader.TokenType == JsonTokenType.EndObject) break;
-
-                            // try to read algorithm span.
-                            if (reader.TokenType == JsonTokenType.PropertyName && reader.ValueTextEquals(JwtConstantsUtf8.Algorithm))
-                            {
-                                reader.Read();
-                                algorithm = resolver.Resolve(reader.ValueSpan);
-                            }
-                        }
-                    }
-                    catch (JsonException)
-                    {
-                        payloadResult = default;
-                        return DecodeResult.InvalidHeaderFormat;
-                    }
+                    payloadResult = default;
+                    return DecodeResult.InvalidBase64UrlHeader;
                 }
-            }
 
-            // parsing payload.
-            long? expiry = null;
-            long? notBefore = null;
-            {
-                var rentBytes = ArrayPool<byte>.Shared.Rent(Base64.GetMaxBase64UrlDecodeLength(payload.Length));
                 try
                 {
-                    Span<byte> bytes = rentBytes.AsSpan();
-                    if (!Base64.TryFromBase64UrlUtf8(payload, bytes, out var bytesWritten))
+                    var reader = new Utf8JsonReader(bytes.Slice(0, bytesWritten));
+                    while (reader.Read())
                     {
-                        payloadResult = default;
-                        return DecodeResult.InvalidBase64UrlPayload;
-                    }
+                        if (reader.TokenType == JsonTokenType.EndObject) break;
 
-                    var decodedPayload = bytes.Slice(0, bytesWritten);
-                    try
-                    {
-                        var reader = new Utf8JsonReader(decodedPayload);
-                        while (reader.Read())
+                        // try to read algorithm span.
+                        if (reader.TokenType == JsonTokenType.PropertyName &&
+                            reader.ValueTextEquals(JwtConstantsUtf8.Algorithm))
                         {
-                            if (reader.TokenType == JsonTokenType.EndObject) break;
+                            reader.Read();
+                            algorithm = resolver.Resolve(reader.ValueSpan);
+                        }
+                    }
+                }
+                catch (JsonException)
+                {
+                    payloadResult = default;
+                    return DecodeResult.InvalidHeaderFormat;
+                }
+            }
 
-                            if (reader.TokenType == JsonTokenType.PropertyName)
+            long? expiry = null;
+            long? notBefore = null;
+
+            // parsing payload.
+            var rentBytes = ArrayPool<byte>.Shared.Rent(Base64.GetMaxBase64UrlDecodeLength(payload.Length));
+            try
+            {
+                Span<byte> bytes = rentBytes.AsSpan();
+                if (!Base64.TryFromBase64UrlUtf8(payload, bytes, out bytesWritten))
+                {
+                    payloadResult = default;
+                    return DecodeResult.InvalidBase64UrlPayload;
+                }
+
+                var decodedPayload = bytes.Slice(0, bytesWritten);
+                try
+                {
+                    var reader = new Utf8JsonReader(decodedPayload);
+                    while (reader.Read())
+                    {
+                        if (reader.TokenType == JsonTokenType.EndObject) break;
+
+                        if (reader.TokenType == JsonTokenType.PropertyName)
+                        {
+                            if (reader.ValueTextEquals(JwtConstantsUtf8.Expiration))
                             {
-                                if (reader.ValueTextEquals(JwtConstantsUtf8.Expiration))
-                                {
-                                    reader.Read();
-                                    expiry = reader.GetInt64();
-                                }
-                                else if (reader.ValueTextEquals(JwtConstantsUtf8.NotBefore))
-                                {
-                                    reader.Read();
-                                    notBefore = reader.GetInt64();
-                                }
+                                reader.Read();
+                                expiry = reader.GetInt64();
+                            }
+                            else if (reader.ValueTextEquals(JwtConstantsUtf8.NotBefore))
+                            {
+                                reader.Read();
+                                notBefore = reader.GetInt64();
                             }
                         }
                     }
-                    catch (JsonException)
-                    {
-                        payloadResult = default;
-                        return DecodeResult.InvalidPayloadFormat;
-                    }
-
-                    // and custom deserialize.
-                    payloadResult = payloadParser(decodedPayload);
                 }
-                finally
+                catch (JsonException)
                 {
-                    ArrayPool<byte>.Shared.Return(rentBytes);
+                    payloadResult = default;
+                    return DecodeResult.InvalidPayloadFormat;
                 }
+
+                // and custom deserialize.
+                payloadResult = payloadParser(decodedPayload);
             }
-
-            DecodeResult lifetimeValidationResult = ValidateTokenLifetime(
-                notBefore, expiry, validationParameters, payloadResult);
-
-            if (lifetimeValidationResult != DecodeResult.Success)
-                return lifetimeValidationResult;
-
-            // parsing signature.
+            finally
             {
-                if (algorithm == null)
-                {
-                    return DecodeResult.AlgorithmNotExists;
-                }
-
-                Span<byte> signatureDecoded = stackalloc byte[Base64.GetMaxBase64UrlDecodeLength(signature.Length)];
-                if (!Base64.TryFromBase64UrlUtf8(signature, signatureDecoded, out var bytesWritten))
-                {
-                    return DecodeResult.InvalidBase64UrlSignature;
-                }
-                signatureDecoded = signatureDecoded.Slice(0, bytesWritten);
-
-                if (!algorithm.Verify(headerAndPayload, signatureDecoded))
-                {
-                    return DecodeResult.FailedVerifySignature;
-                }
+                ArrayPool<byte>.Shared.Return(rentBytes);
             }
 
-            // all ok
-            return DecodeResult.Success;
+            if (algorithm == null)
+            {
+                return DecodeResult.AlgorithmNotExists;
+            }
+
+            Span<byte> signatureDecoded = stackalloc byte[Base64.GetMaxBase64UrlDecodeLength(signature.Length)];
+            if (!Base64.TryFromBase64UrlUtf8(signature, signatureDecoded, out bytesWritten))
+            {
+                return DecodeResult.InvalidBase64UrlSignature;
+            }
+
+            signatureDecoded = signatureDecoded.Slice(0, bytesWritten);
+
+            if (!algorithm.Verify(headerAndPayload, signatureDecoded))
+            {
+                return DecodeResult.FailedVerifySignature;
+            }
+
+            return ValidateTokenLifetime(notBefore, expiry, validationParameters, payloadResult);
         }
 
         DecodeResult TryDecodeCore<T>(
@@ -457,17 +446,63 @@ namespace LitJWT
                 out var signature);
 
             IJwtAlgorithm algorithm = null;
+            int bytesWritten = 0;
 
             // parsing header.
+            Span<byte> bytes = stackalloc byte[Base64.GetMaxBase64UrlDecodeLength(header.Length)];
+            if (!Base64.TryFromBase64UrlChars(header, bytes, out bytesWritten))
             {
-                Span<byte> bytes = stackalloc byte[Base64.GetMaxBase64UrlDecodeLength(header.Length)];
-                if (!Base64.TryFromBase64UrlChars(header, bytes, out var bytesWritten))
+                payloadResult = default;
+                return DecodeResult.InvalidBase64UrlHeader;
+            }
+
+            var decodedPayload = bytes.Slice(0, bytesWritten);
+            try
+            {
+                var reader = new Utf8JsonReader(decodedPayload);
+                while (reader.Read())
+                {
+                    if (reader.TokenType == JsonTokenType.EndObject) break;
+
+                    // try to read algorithm span.
+                    if (reader.TokenType == JsonTokenType.PropertyName)
+                    {
+                        if (reader.ValueTextEquals(JwtConstantsUtf8.Algorithm))
+                        {
+                            if (!reader.Read())
+                            {
+                                payloadResult = default;
+                                return DecodeResult.InvalidHeaderFormat;
+                            }
+
+                            algorithm = resolver.Resolve(reader.ValueSpan);
+                        }
+                    }
+                }
+            }
+            catch (JsonException)
+            {
+                payloadResult = default;
+                return DecodeResult.InvalidHeaderFormat;
+            }
+
+
+            long? expiry = null;
+            long? notBefore = null;
+
+            // parsing payload.
+            var rentBytes = ArrayPool<byte>.Shared.Rent(Base64.GetMaxBase64UrlDecodeLength(payload.Length));
+            try
+            {
+                bytes = rentBytes.AsSpan();
+                if (!Base64.TryFromBase64UrlChars(payload, bytes, out bytesWritten))
                 {
                     payloadResult = default;
-                    return DecodeResult.InvalidBase64UrlHeader;
+                    return DecodeResult.InvalidBase64UrlPayload;
                 }
 
-                var decodedPayload = bytes.Slice(0, bytesWritten);
+                decodedPayload = bytes.Slice(0, bytesWritten);
+
                 try
                 {
                     var reader = new Utf8JsonReader(decodedPayload);
@@ -475,17 +510,27 @@ namespace LitJWT
                     {
                         if (reader.TokenType == JsonTokenType.EndObject) break;
 
-                        // try to read algorithm span.
                         if (reader.TokenType == JsonTokenType.PropertyName)
                         {
-                            if (reader.ValueTextEquals(JwtConstantsUtf8.Algorithm))
+                            if (reader.ValueTextEquals(JwtConstantsUtf8.Expiration))
                             {
                                 if (!reader.Read())
                                 {
                                     payloadResult = default;
                                     return DecodeResult.InvalidHeaderFormat;
                                 }
-                                algorithm = resolver.Resolve(reader.ValueSpan);
+
+                                expiry = reader.GetInt64();
+                            }
+                            else if (reader.ValueTextEquals(JwtConstantsUtf8.NotBefore))
+                            {
+                                if (!reader.Read())
+                                {
+                                    payloadResult = default;
+                                    return DecodeResult.InvalidHeaderFormat;
+                                }
+
+                                notBefore = reader.GetInt64();
                             }
                         }
                     }
@@ -493,110 +538,48 @@ namespace LitJWT
                 catch (JsonException)
                 {
                     payloadResult = default;
-                    return DecodeResult.InvalidHeaderFormat;
+                    return DecodeResult.InvalidPayloadFormat;
                 }
-            }
 
-            // parsing payload.
-            long? expiry = null;
-            long? notBefore = null;
+                // and custom deserialize.
+                payloadResult = payloadParser(decodedPayload);
+            }
+            finally
             {
-                var rentBytes = ArrayPool<byte>.Shared.Rent(Base64.GetMaxBase64UrlDecodeLength(payload.Length));
-                try
-                {
-                    Span<byte> bytes = rentBytes.AsSpan();
-                    if (!Base64.TryFromBase64UrlChars(payload, bytes, out var bytesWritten))
-                    {
-                        payloadResult = default;
-                        return DecodeResult.InvalidBase64UrlPayload;
-                    }
-
-                    var decodedPayload = bytes.Slice(0, bytesWritten);
-
-                    try
-                    {
-                        var reader = new Utf8JsonReader(decodedPayload);
-                        while (reader.Read())
-                        {
-                            if (reader.TokenType == JsonTokenType.EndObject) break;
-
-                            if (reader.TokenType == JsonTokenType.PropertyName)
-                            {
-                                if (reader.ValueTextEquals(JwtConstantsUtf8.Expiration))
-                                {
-                                    if (!reader.Read())
-                                    {
-                                        payloadResult = default;
-                                        return DecodeResult.InvalidHeaderFormat;
-                                    }
-                                    expiry = reader.GetInt64();
-                                }
-                                else if (reader.ValueTextEquals(JwtConstantsUtf8.NotBefore))
-                                {
-                                    if (!reader.Read())
-                                    {
-                                        payloadResult = default;
-                                        return DecodeResult.InvalidHeaderFormat;
-                                    }
-                                    notBefore = reader.GetInt64();
-                                }
-                            }
-                        }
-                    }
-                    catch (JsonException)
-                    {
-                        payloadResult = default;
-                        return DecodeResult.InvalidPayloadFormat;
-                    }
-
-                    // and custom deserialize.
-                    payloadResult = payloadParser(decodedPayload);
-                }
-                finally
-                {
-                    ArrayPool<byte>.Shared.Return(rentBytes);
-                }
+                ArrayPool<byte>.Shared.Return(rentBytes);
             }
-
-            DecodeResult lifetimeValidationResult = ValidateTokenLifetime(
-                notBefore, expiry, validationParameters, payloadResult);
-
-            if (lifetimeValidationResult != DecodeResult.Success)
-                return lifetimeValidationResult;
 
             // parsing signature.
+            if (algorithm == null)
             {
-                if (algorithm == null)
-                {
-                    return DecodeResult.AlgorithmNotExists;
-                }
-
-                var rentBuffer = ArrayPool<byte>.Shared.Rent(Encoding.UTF8.GetMaxByteCount(headerAndPayload.Length));
-                try
-                {
-                    Span<byte> signatureDecoded = stackalloc byte[Base64.GetMaxBase64UrlDecodeLength(signature.Length)];
-                    if (!Base64.TryFromBase64UrlChars(signature, signatureDecoded, out var bytesWritten))
-                    {
-                        return DecodeResult.InvalidBase64UrlSignature;
-                    }
-                    signatureDecoded = signatureDecoded.Slice(0, bytesWritten);
-
-                    var signBuffer = rentBuffer.AsSpan();
-                    var byteCount = Encoding.UTF8.GetBytes(headerAndPayload, signBuffer);
-                    signBuffer = signBuffer.Slice(0, byteCount);
-                    if (!algorithm.Verify(signBuffer, signatureDecoded))
-                    {
-                        return DecodeResult.FailedVerifySignature;
-                    }
-                }
-                finally
-                {
-                    ArrayPool<byte>.Shared.Return(rentBuffer);
-                }
+                return DecodeResult.AlgorithmNotExists;
             }
 
-            // all ok
-            return DecodeResult.Success;
+            var rentBuffer = ArrayPool<byte>.Shared.Rent(Encoding.UTF8.GetMaxByteCount(headerAndPayload.Length));
+            try
+            {
+                Span<byte> signatureDecoded = stackalloc byte[Base64.GetMaxBase64UrlDecodeLength(signature.Length)];
+                if (!Base64.TryFromBase64UrlChars(signature, signatureDecoded, out bytesWritten))
+                {
+                    return DecodeResult.InvalidBase64UrlSignature;
+                }
+
+                signatureDecoded = signatureDecoded.Slice(0, bytesWritten);
+
+                var signBuffer = rentBuffer.AsSpan();
+                var byteCount = Encoding.UTF8.GetBytes(headerAndPayload, signBuffer);
+                signBuffer = signBuffer.Slice(0, byteCount);
+                if (!algorithm.Verify(signBuffer, signatureDecoded))
+                {
+                    return DecodeResult.FailedVerifySignature;
+                }
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(rentBuffer);
+            }
+
+            return ValidateTokenLifetime(notBefore, expiry, validationParameters, payloadResult);
         }
 
         static DecodeResult ValidateTokenLifetime<T>(
