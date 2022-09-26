@@ -115,6 +115,24 @@ namespace LitJWT.Tests
                 var decodeResult = decoder.TryDecode(result, x => JsonConvert.DeserializeObject<Payload>(Encoding.UTF8.GetString(x)), out var decodedPayload);
                 decodeResult.Should().Be(DecodeResult.Success);
             }
+
+            {
+                var nested = new Payload { Bar = 2, Foo = "foo2" };
+                var payload = new PayloadExp { Bar = 1, Foo = "foo", Nested = nested, exp = (DateTimeOffset.UtcNow - TimeSpan.FromSeconds(10)).ToUnixTimeSeconds() };
+                var jwt = encoder.Encode(payload, null);
+
+                var decodeResult = decoder.TryDecode(jwt, out PayloadExp decodedPayload);
+                decodeResult.Should().Be(DecodeResult.FailedVerifyExpire);
+            }
+
+            {
+                var nested = new Payload { Bar = 2, Foo = "foo2" };
+                var payload = new PayloadExp { Bar = 1, Foo = "foo", Nested = nested, exp = (DateTimeOffset.UtcNow + TimeSpan.FromSeconds(10)).ToUnixTimeSeconds() };
+                var jwt = encoder.Encode(payload, null);
+
+                var decodeResult = decoder.TryDecode(jwt, out PayloadExp decodedPayload);
+                decodeResult.Should().Be(DecodeResult.Success);
+            }
         }
 
         [Fact]
@@ -142,6 +160,24 @@ namespace LitJWT.Tests
 
                 var decodeResult = decoder.TryDecode(result, x => JsonConvert.DeserializeObject<Payload>(Encoding.UTF8.GetString(x)), out var decodedPayload);
 
+                decodeResult.Should().Be(DecodeResult.Success);
+            }
+
+            {
+                var nested = new Payload { Bar = 2, Foo = "foo2" };
+                var payload = new PayloadNbf { Bar = 1, Foo = "foo", Nested = nested, nbf = (DateTimeOffset.UtcNow + TimeSpan.FromSeconds(10)).ToUnixTimeSeconds() };
+                var jwt = encoder.Encode(payload, null);
+
+                var decodeResult = decoder.TryDecode(jwt, out PayloadNbf decodedPayload);
+                decodeResult.Should().Be(DecodeResult.FailedVerifyNotBefore);
+            }
+
+            {
+                var nested = new Payload { Bar = 2, Foo = "foo2" };
+                var payload = new PayloadNbf { Bar = 1, Foo = "foo", Nested = nested, nbf = (DateTimeOffset.UtcNow - TimeSpan.FromSeconds(10)).ToUnixTimeSeconds() };
+                var jwt = encoder.Encode(payload, null);
+
+                var decodeResult = decoder.TryDecode(jwt, out PayloadNbf decodedPayload);
                 decodeResult.Should().Be(DecodeResult.Success);
             }
         }
@@ -232,6 +268,24 @@ namespace LitJWT.Tests
                 var decodeResult = decoder.TryDecode(result, x => JsonConvert.DeserializeObject<Payload>(Encoding.UTF8.GetString(x)), out var decodedPayload);
                 decodeResult.Should().Be(DecodeResult.Success);
             }
+
+            {
+                var nested = new Payload { Bar = 2, Foo = "foo2" };
+                var payload = new PayloadExp { Bar = 1, Foo = "foo", Nested = nested, exp = (DateTimeOffset.UtcNow - TimeSpan.FromSeconds(10)).ToUnixTimeSeconds() };
+                var jwt = encoder.EncodeAsUtf8Bytes(payload, null);
+
+                var decodeResult = decoder.TryDecode(jwt, out PayloadExp decodedPayload);
+                decodeResult.Should().Be(DecodeResult.FailedVerifyExpire);
+            }
+
+            {
+                var nested = new Payload { Bar = 2, Foo = "foo2" };
+                var payload = new PayloadExp { Bar = 1, Foo = "foo", Nested = nested, exp = (DateTimeOffset.UtcNow + TimeSpan.FromSeconds(10)).ToUnixTimeSeconds() };
+                var jwt = encoder.EncodeAsUtf8Bytes(payload, null);
+
+                var decodeResult = decoder.TryDecode(jwt, out PayloadExp decodedPayload);
+                decodeResult.Should().Be(DecodeResult.Success);
+            }
         }
 
         [Fact]
@@ -258,6 +312,26 @@ namespace LitJWT.Tests
 
 
                 var decodeResult = decoder.TryDecode(result, x => JsonConvert.DeserializeObject<Payload>(Encoding.UTF8.GetString(x)), out var decodedPayload);
+
+                decodeResult.Should().Be(DecodeResult.Success);
+            }
+            {
+                var nested = new Payload { Bar = 2, Foo = "foo2" };
+                var payload = new PayloadNbf { Bar = 1, Foo = "foo", Nested = nested, nbf = (DateTimeOffset.UtcNow + TimeSpan.FromSeconds(10)).ToUnixTimeSeconds() };
+                var jwt = encoder.EncodeAsUtf8Bytes(payload, null);
+
+
+                var decodeResult = decoder.TryDecode(jwt, out PayloadNbf decodedPayload);
+
+                decodeResult.Should().Be(DecodeResult.FailedVerifyNotBefore);
+            }
+            {
+                var nested = new Payload { Bar = 2, Foo = "foo2" };
+                var payload = new PayloadNbf { Bar = 1, Foo = "foo", Nested = nested, nbf = (DateTimeOffset.UtcNow - TimeSpan.FromSeconds(10)).ToUnixTimeSeconds() };
+                var jwt = encoder.EncodeAsUtf8Bytes(payload, null);
+
+
+                var decodeResult = decoder.TryDecode(jwt, out PayloadNbf decodedPayload);
 
                 decodeResult.Should().Be(DecodeResult.Success);
             }
