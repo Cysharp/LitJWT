@@ -215,8 +215,6 @@ namespace LitJWT
                         var reader = new System.Text.Json.Utf8JsonReader(decodedPayload);
                         while (reader.Read())
                         {
-                            if (reader.TokenType == System.Text.Json.JsonTokenType.EndObject) break;
-
                             if (reader.CurrentDepth == 1 && reader.TokenType == JsonTokenType.PropertyName)
                             {
                                 if (reader.ValueTextEquals(JwtConstantsUtf8.Expiration))
@@ -358,8 +356,6 @@ namespace LitJWT
                         var reader = new System.Text.Json.Utf8JsonReader(decodedPayload);
                         while (reader.Read())
                         {
-                            if (reader.TokenType == System.Text.Json.JsonTokenType.EndObject) break;
-
                             if (reader.CurrentDepth == 1 && reader.TokenType == JsonTokenType.PropertyName)
                             {
                                 if (reader.ValueTextEquals(JwtConstantsUtf8.Expiration))
@@ -514,8 +510,6 @@ namespace LitJWT
                         var reader = new System.Text.Json.Utf8JsonReader(decodedPayload);
                         while (reader.Read())
                         {
-                            if (reader.TokenType == System.Text.Json.JsonTokenType.EndObject) break;
-
                             if (reader.CurrentDepth == 1 && reader.TokenType == JsonTokenType.PropertyName)
                             {
                                 if (reader.ValueTextEquals(JwtConstantsUtf8.Expiration))
@@ -652,8 +646,6 @@ namespace LitJWT
                         var reader = new System.Text.Json.Utf8JsonReader(decodedPayload);
                         while (reader.Read())
                         {
-                            if (reader.TokenType == System.Text.Json.JsonTokenType.EndObject) break;
-
                             if (reader.CurrentDepth == 1 && reader.TokenType == JsonTokenType.PropertyName)
                             {
                                 if (reader.ValueTextEquals(JwtConstantsUtf8.Expiration))
