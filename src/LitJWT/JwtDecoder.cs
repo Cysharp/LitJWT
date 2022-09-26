@@ -516,7 +516,7 @@ namespace LitJWT
                         {
                             if (reader.TokenType == System.Text.Json.JsonTokenType.EndObject) break;
 
-                            if (reader.TokenType == JsonTokenType.PropertyName)
+                            if (reader.CurrentDepth == 1 && reader.TokenType == JsonTokenType.PropertyName)
                             {
                                 if (reader.ValueTextEquals(JwtConstantsUtf8.Expiration))
                                 {
