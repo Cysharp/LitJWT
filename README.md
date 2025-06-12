@@ -1,3 +1,7 @@
+This repository is archived, please use `System.IdentityModel.Tokens.Jwt` instead.
+
+-----
+
 [![GitHub Actions](https://github.com/Cysharp/LitJWT/workflows/Build-Debug/badge.svg)](https://github.com/Cysharp/LitJWT/actions) [![Releases](https://img.shields.io/github/release/Cysharp/LitJWT.svg)](https://github.com/Cysharp/LitJWT/releases)
 
 LitJWT
